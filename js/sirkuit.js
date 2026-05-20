@@ -33,6 +33,9 @@
   const elCurrent    = document.getElementById('displayCurrent');
   const elPower      = document.getElementById('displayPower');
   const elStatus     = document.getElementById('displayStatus');
+  const elLabelCurrent       = document.getElementById('labelCurrent');
+  const elCurrentPerBulb     = document.getElementById('displayCurrentPerBulb');
+  const elItemCurrentPerBulb = document.getElementById('itemCurrentPerBulb');
 
   const sliderBattery      = document.getElementById('batteryCount');
   const labelBattery       = document.getElementById('batteryCountDisplay');
@@ -247,8 +250,19 @@
   function updateDisplay() {
     elVoltage.textContent    = `${sim.V_total.toFixed(2)} V`;
     elResistance.textContent = `${sim.R_total.toFixed(2)} \u03A9`;
-    elCurrent.textContent    = `${sim.I.toFixed(3)} A`;
     elPower.textContent      = `${sim.P_actual.toFixed(2)} W`;
+
+    if (sim.circuitType === 'paralel' && sim.bulbCount > 1) {
+      elLabelCurrent.textContent       = 'Arus Total (I)';
+      elCurrent.textContent            = `${sim.I.toFixed(3)} A`;
+      const iPerBulb                   = sim.bulbCount > 0 ? sim.I / sim.bulbCount : 0;
+      elCurrentPerBulb.textContent     = `${iPerBulb.toFixed(3)} A`;
+      elItemCurrentPerBulb.hidden      = false;
+    } else {
+      elLabelCurrent.textContent  = 'Arus (I)';
+      elCurrent.textContent       = `${sim.I.toFixed(3)} A`;
+      elItemCurrentPerBulb.hidden = true;
+    }
 
     elStatus.className = 'info-value info-value--status';
     if (sim.bulbState === 'dim') {
