@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Simulator Sirkuit Digital — Belajar Hukum Ohm dan Rangkaian Listrik untuk Siswa SD" />
+  <title>⚡ Simulator Sirkuit Digital</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1 class="app-title">⚡ Simulator Sirkuit Digital</h1>
+    <p class="app-subtitle">Belajar Listrik Seru &amp; Aman!</p>
+  </header>
+
+  <main class="app-main">
+
+    <!-- Canvas Area -->
+    <section class="canvas-section" aria-label="Visualisasi Sirkuit">
+      <canvas id="circuitCanvas" role="img" aria-label="Animasi rangkaian listrik dengan elektron bergerak"></canvas>
+      <div id="overloadBanner" class="overload-banner" aria-live="assertive" aria-atomic="true" hidden>
+        ⚡ OVERLOAD! Lampu Putus!
+      </div>
+    </section>
+
+    <!-- Physics Info Panel -->
+    <section class="info-panel" aria-label="Hasil Perhitungan Fisika">
+      <h2 class="info-panel__title">📊 Hasil Perhitungan</h2>
+      <ul class="info-list">
+        <li class="info-item">
+          <span class="info-label">Tegangan Total (V)</span>
+          <span class="info-value" id="displayVoltage">0.00 V</span>
+        </li>
+        <li class="info-item">
+          <span class="info-label">Hambatan Total (R)</span>
+          <span class="info-value" id="displayResistance">0.00 Ω</span>
+        </li>
+        <li class="info-item">
+          <span class="info-label">Arus (I)</span>
+          <span class="info-value" id="displayCurrent">0.00 A</span>
+        </li>
+        <li class="info-item">
+          <span class="info-label">Daya Aktual / Lampu (P)</span>
+          <span class="info-value" id="displayPower">0.00 W</span>
+        </li>
+        <li class="info-item">
+          <span class="info-label">Status Lampu</span>
+          <span class="info-value info-value--status" id="displayStatus">Normal</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Control Panel -->
+    <section class="control-panel" aria-label="Panel Kontrol Sirkuit">
+      <h2 class="control-panel__title">🎛️ Atur Sirkuit</h2>
+
+      <!-- Circuit Type -->
+      <fieldset class="control-group">
+        <legend class="control-group__legend">Jenis Rangkaian</legend>
+        <div class="radio-group">
+          <label class="radio-label" for="typeSeri">
+            <input class="radio-input" type="radio" id="typeSeri" name="circuitType" value="seri" checked />
+            <span class="radio-custom"></span>
+            🔗 Seri
+          </label>
+          <label class="radio-label" for="typeParalel">
+            <input class="radio-input" type="radio" id="typeParalel" name="circuitType" value="paralel" />
+            <span class="radio-custom"></span>
+            ⚡ Paralel
+          </label>
+        </div>
+      </fieldset>
+
+      <!-- Battery Count -->
+      <div class="control-group">
+        <label class="slider-label" for="batteryCount">
+          🔋 Jumlah Baterai: <strong id="batteryCountDisplay">1</strong>
+        </label>
+        <input
+          class="slider-input"
+          type="range"
+          id="batteryCount"
+          name="batteryCount"
+          min="1"
+          max="4"
+          value="1"
+          step="1"
+          aria-valuemin="1"
+          aria-valuemax="4"
+          aria-valuenow="1"
+          aria-label="Jumlah baterai dalam rangkaian"
+        />
+        <div class="slider-ticks" aria-hidden="true">
+          <span>1</span><span>2</span><span>3</span><span>4</span>
+        </div>
+      </div>
+
+      <!-- Bulb Count -->
+      <div class="control-group">
+        <label class="slider-label" for="bulbCount">
+          💡 Jumlah Lampu: <strong id="bulbCountDisplay">1</strong>
+        </label>
+        <input
+          class="slider-input"
+          type="range"
+          id="bulbCount"
+          name="bulbCount"
+          min="1"
+          max="4"
+          value="1"
+          step="1"
+          aria-valuemin="1"
+          aria-valuemax="4"
+          aria-valuenow="1"
+          aria-label="Jumlah lampu dalam rangkaian"
+        />
+        <div class="slider-ticks" aria-hidden="true">
+          <span>1</span><span>2</span><span>3</span><span>4</span>
+        </div>
+      </div>
+
+      <!-- Bulb Nominal Wattage -->
+      <fieldset class="control-group">
+        <legend class="control-group__legend">💡 Daya Nominal Lampu</legend>
+        <div class="radio-group">
+          <label class="radio-label" for="watt5">
+            <input class="radio-input" type="radio" id="watt5" name="bulbWatt" value="5" />
+            <span class="radio-custom"></span>
+            5 W
+          </label>
+          <label class="radio-label" for="watt10">
+            <input class="radio-input" type="radio" id="watt10" name="bulbWatt" value="10" checked />
+            <span class="radio-custom"></span>
+            10 W
+          </label>
+          <label class="radio-label" for="watt25">
+            <input class="radio-input" type="radio" id="watt25" name="bulbWatt" value="25" />
+            <span class="radio-custom"></span>
+            25 W
+          </label>
+        </div>
+      </fieldset>
+
+      <!-- Reset Button -->
+      <button class="btn-reset" id="btnReset" type="button" aria-label="Reset simulasi ke kondisi awal">
+        🔄 Reset Simulasi
+      </button>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <p>Simulator Sirkuit Digital &copy; 2025 — Belajar Fisika Menyenangkan untuk SD</p>
+  </footer>
+
+  <script src="js/sirkuit.js"></script>
+</body>
+</html>
