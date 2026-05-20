@@ -769,6 +769,11 @@ Karena proyek ini adalah pure vanilla JS tanpa build system, strategi testing me
 
 Seluruh kode pengujian ditulis tanpa komentar dan mengikuti Zero-Comment Policy yang sama dengan kode produksi.
 
+**Aturan Isolasi Test (wajib dipatuhi):**
+- `runSelfTests()` WAJIB menggunakan `snapshotSim()` di awal dan `restoreSim()` di blok `finally` untuk memastikan `sim` selalu dikembalikan ke state production setelah test selesai, baik sukses maupun gagal.
+- `init()` WAJIB memanggil `runSelfTests()` di dalam blok `try-catch` agar error test tidak menghentikan `requestAnimationFrame(loop)` dan animasi tetap berjalan.
+- Setiap fungsi test yang memanggil `runPhysics()` secara langsung WAJIB menyimpan dan merestore seluruh 14 field `sim.*` (termasuk `V_total`, `R_total`, `I`, `I_peak`, `P_actual`, `bulbState`, `dimAlpha`) — bukan hanya field input (`circuitType`, `batteryCount`, `bulbCount`, `bulbWatt`).
+
 ---
 
 ### Property-Based Tests (Physics Engine)

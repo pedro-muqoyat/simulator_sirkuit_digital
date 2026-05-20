@@ -7,6 +7,7 @@
   const BLAST_COUNT        = 15;
   const BLAST_DURATION_MS  = 1800;
   const BASE_SPEED         = 0.004;
+  const BATTERY_CAPACITY_MAH = 2500;
 
   const sim = {
     circuitType  : 'seri',
@@ -16,6 +17,7 @@
     V_total      : 0,
     R_total      : 0,
     I            : 0,
+    I_peak       : 0,
     P_actual     : 0,
     bulbState    : 'normal',
     dimAlpha     : 1.0,
@@ -36,6 +38,9 @@
   const elLabelCurrent       = document.getElementById('labelCurrent');
   const elCurrentPerBulb     = document.getElementById('displayCurrentPerBulb');
   const elItemCurrentPerBulb = document.getElementById('itemCurrentPerBulb');
+  const elBatteryLife        = document.getElementById('displayBatteryLife');
+  const elCurrentPeak        = document.getElementById('displayCurrentPeak');
+  const elItemCurrentPeak    = document.getElementById('itemCurrentPeak');
 
   const sliderBattery      = document.getElementById('batteryCount');
   const labelBattery       = document.getElementById('batteryCountDisplay');
@@ -222,6 +227,7 @@
     } else {
       bulbState = 'overload';
       dimAlpha  = 1.0;
+      sim.I_peak = I;
       I = 0;
     }
 
@@ -236,6 +242,7 @@
     } else if (!nowOverload && sim.wasOverload) {
       overloadBanner.hidden = true;
       sim.blastActive = false;
+      sim.I_peak      = 0;
     }
 
     sim.V_total   = V_total;
@@ -264,6 +271,13 @@
       elItemCurrentPerBulb.hidden = true;
     }
 
+    if (sim.bulbState === 'overload' && sim.I_peak > 0) {
+      elCurrentPeak.textContent  = `${sim.I_peak.toFixed(3)} A (rangkaian terbuka)`;
+      elItemCurrentPeak.hidden   = false;
+    } else {
+      elItemCurrentPeak.hidden = true;
+    }
+
     elStatus.className = 'info-value info-value--status';
     if (sim.bulbState === 'dim') {
       elStatus.textContent = 'Redup';
@@ -274,6 +288,19 @@
     } else {
       elStatus.textContent = 'OVERLOAD!';
       elStatus.classList.add('status-overload');
+    }
+
+    if (sim.bulbState === 'overload' || sim.I <= 0) {
+      elBatteryLife.textContent = '-';
+    } else {
+      const totalCapacityMah = BATTERY_CAPACITY_MAH * sim.batteryCount;
+      const totalCurrentMa   = sim.I * 1000;
+      const totalMinutes     = Math.round(totalCapacityMah / totalCurrentMa * 60);
+      const hours            = Math.floor(totalMinutes / 60);
+      const minutes          = totalMinutes % 60;
+      elBatteryLife.textContent = hours > 0
+        ? `${hours} jam ${minutes} menit`
+        : `${minutes} menit`;
     }
   }
 
@@ -518,6 +545,7 @@
     sim.bulbWatt     = 10;
     sim.wasOverload  = false;
     sim.blastActive  = false;
+    sim.I_peak       = 0;
     blasts.length    = 0;
 
     document.getElementById('typeSeri').checked = true;
@@ -697,27 +725,9 @@
     const wattOptions = [5, 10, 25];
 
     for (const watt of wattOptions) {
-      const R_bulb = (V_BATTERY * V_BATTERY) / watt;
-
-      const snapshotZero = computePhysicsSnapshot('paralel', 1, 1, watt);
-      if (snapshotZero.P_actual !== 0) {
-        const snapshotForcedZero = {
-          P_actual  : 0,
-          bulbWatt  : watt,
-          bulbState : 'dim',
-          dimAlpha  : 0.25,
-          I         : 0,
-        };
-        if (snapshotForcedZero.bulbState !== 'dim') {
-          throw new Error('assertBulbStateClassification: P_actual=0 must yield bulbState=dim');
-        }
-        if (snapshotForcedZero.dimAlpha !== 0.25) {
-          throw new Error('assertBulbStateClassification: P_actual=0 must yield dimAlpha=0.25');
-        }
-      }
-
       const dimCases = [
-        { circuitType: 'seri', batteryCount: 1, bulbCount: 4 },
+        { circuitType: 'seri',    batteryCount: 1, bulbCount: 4 },
+        { circuitType: 'paralel', batteryCount: 1, bulbCount: 1 },
       ];
       for (const c of dimCases) {
         const snap = computePhysicsSnapshot(c.circuitType, c.batteryCount, c.bulbCount, watt);
@@ -725,22 +735,23 @@
           if (snap.bulbState !== 'dim') {
             throw new Error(
               'assertBulbStateClassification: 0<P_actual<P_nominal must yield bulbState=dim, got ' +
-              snap.bulbState + ' for watt=' + watt
+              snap.bulbState + ' for watt=' + watt + ' type=' + c.circuitType
             );
           }
           const expectedAlpha = Math.max(0.25, snap.P_actual / watt);
           if (Math.abs(snap.dimAlpha - expectedAlpha) > 0.0001) {
             throw new Error(
               'assertBulbStateClassification: dimAlpha mismatch for dim state, expected ' +
-              expectedAlpha + ' got ' + snap.dimAlpha
+              expectedAlpha + ' got ' + snap.dimAlpha + ' watt=' + watt
             );
           }
         }
       }
 
       const normalCases = [
-        { circuitType: 'seri', batteryCount: 1, bulbCount: 1 },
+        { circuitType: 'seri',    batteryCount: 1, bulbCount: 1 },
         { circuitType: 'paralel', batteryCount: 1, bulbCount: 1 },
+        { circuitType: 'paralel', batteryCount: 4, bulbCount: 4 },
       ];
       for (const c of normalCases) {
         const snap = computePhysicsSnapshot(c.circuitType, c.batteryCount, c.bulbCount, watt);
@@ -748,7 +759,7 @@
           if (snap.bulbState !== 'normal') {
             throw new Error(
               'assertBulbStateClassification: P_nominal<=P_actual<=P_nominal*1.3 must yield bulbState=normal, got ' +
-              snap.bulbState + ' for watt=' + watt
+              snap.bulbState + ' for watt=' + watt + ' type=' + c.circuitType
             );
           }
           if (snap.dimAlpha !== 1.0) {
@@ -789,6 +800,22 @@
         );
       }
     }
+
+    const dimAlphaMin = computePhysicsSnapshot('seri', 1, 4, 10);
+    if (dimAlphaMin.bulbState === 'dim' && dimAlphaMin.P_actual > 0) {
+      const expectedAlpha = Math.max(0.25, dimAlphaMin.P_actual / 10);
+      if (Math.abs(dimAlphaMin.dimAlpha - expectedAlpha) > 0.0001) {
+        throw new Error(
+          'assertBulbStateClassification: dimAlpha proportional check failed, expected ' +
+          expectedAlpha + ' got ' + dimAlphaMin.dimAlpha
+        );
+      }
+      if (dimAlphaMin.dimAlpha < 0.25 || dimAlphaMin.dimAlpha >= 1.0) {
+        throw new Error(
+          'assertBulbStateClassification: dimAlpha out of range [0.25, 1.0), got ' + dimAlphaMin.dimAlpha
+        );
+      }
+    }
   }
 
   function assertSimMonomorphic() {
@@ -800,6 +827,7 @@
       'V_total',
       'R_total',
       'I',
+      'I_peak',
       'P_actual',
       'bulbState',
       'dimAlpha',
@@ -831,6 +859,7 @@
     if (typeof sim.V_total      !== 'number')  throw new Error('assertSimMonomorphic: V_total must be number');
     if (typeof sim.R_total      !== 'number')  throw new Error('assertSimMonomorphic: R_total must be number');
     if (typeof sim.I            !== 'number')  throw new Error('assertSimMonomorphic: I must be number');
+    if (typeof sim.I_peak       !== 'number')  throw new Error('assertSimMonomorphic: I_peak must be number');
     if (typeof sim.P_actual     !== 'number')  throw new Error('assertSimMonomorphic: P_actual must be number');
     if (typeof sim.bulbState    !== 'string')  throw new Error('assertSimMonomorphic: bulbState must be string');
     if (typeof sim.dimAlpha     !== 'number')  throw new Error('assertSimMonomorphic: dimAlpha must be number');
@@ -1495,10 +1524,33 @@
       throw new Error('assertCriticalScenarios test4: bulbState expected=dim got=' + snap4.bulbState);
     }
 
+    const snap4b = computePhysicsSnapshot('paralel', 1, 1, 10);
+    if (snap4b.bulbState !== 'normal') {
+      throw new Error('assertCriticalScenarios test4b: paralel 1b 1l 10W must be normal, got=' + snap4b.bulbState);
+    }
+    if (Math.abs(snap4b.V_total - V_BATTERY) > 0.001) {
+      throw new Error('assertCriticalScenarios test4b: paralel V_total must equal V_BATTERY, got=' + snap4b.V_total);
+    }
+
+    const snap4c = computePhysicsSnapshot('seri', 2, 2, 10);
+    if (snap4c.bulbState !== 'normal') {
+      throw new Error('assertCriticalScenarios test4c: seri 2b 2l 10W must be normal, got=' + snap4c.bulbState);
+    }
+    if (Math.abs(snap4c.I - 6.667) > 0.01) {
+      throw new Error('assertCriticalScenarios test4c: seri 2b 2l 10W I expected=6.667 got=' + snap4c.I);
+    }
+
     const savedCircuitType5  = sim.circuitType;
     const savedBatteryCount5 = sim.batteryCount;
     const savedBulbCount5    = sim.bulbCount;
     const savedBulbWatt5     = sim.bulbWatt;
+    const savedVtotal5       = sim.V_total;
+    const savedRtotal5       = sim.R_total;
+    const savedI5            = sim.I;
+    const savedIPeak5        = sim.I_peak;
+    const savedPactual5      = sim.P_actual;
+    const savedBulbState5    = sim.bulbState;
+    const savedDimAlpha5     = sim.dimAlpha;
     const savedWasOverload5  = sim.wasOverload;
     const savedBlastActive5  = sim.blastActive;
     const savedBlastTime5    = sim.blastTime;
@@ -1512,11 +1564,24 @@
     if (sim.wasOverload !== true) {
       throw new Error('assertCriticalScenarios test5: wasOverload must be true after overload transition');
     }
+    if (sim.I !== 0) {
+      throw new Error('assertCriticalScenarios test5: I must be 0 during overload, got=' + sim.I);
+    }
+    if (sim.I_peak <= 0) {
+      throw new Error('assertCriticalScenarios test5: I_peak must be > 0 during overload, got=' + sim.I_peak);
+    }
 
     sim.circuitType  = savedCircuitType5;
     sim.batteryCount = savedBatteryCount5;
     sim.bulbCount    = savedBulbCount5;
     sim.bulbWatt     = savedBulbWatt5;
+    sim.V_total      = savedVtotal5;
+    sim.R_total      = savedRtotal5;
+    sim.I            = savedI5;
+    sim.I_peak       = savedIPeak5;
+    sim.P_actual     = savedPactual5;
+    sim.bulbState    = savedBulbState5;
+    sim.dimAlpha     = savedDimAlpha5;
     sim.wasOverload  = savedWasOverload5;
     sim.blastActive  = savedBlastActive5;
     sim.blastTime    = savedBlastTime5;
@@ -1525,6 +1590,13 @@
     const savedBatteryCount6 = sim.batteryCount;
     const savedBulbCount6    = sim.bulbCount;
     const savedBulbWatt6     = sim.bulbWatt;
+    const savedVtotal6       = sim.V_total;
+    const savedRtotal6       = sim.R_total;
+    const savedI6            = sim.I;
+    const savedIPeak6        = sim.I_peak;
+    const savedPactual6      = sim.P_actual;
+    const savedBulbState6    = sim.bulbState;
+    const savedDimAlpha6     = sim.dimAlpha;
     const savedWasOverload6  = sim.wasOverload;
     const savedBlastActive6  = sim.blastActive;
     const savedBlastTime6    = sim.blastTime;
@@ -1539,67 +1611,241 @@
     if (sim.blastActive !== false) {
       throw new Error('assertCriticalScenarios test6: blastActive must be false after exiting overload');
     }
+    if (sim.wasOverload !== false) {
+      throw new Error('assertCriticalScenarios test6: wasOverload must be false after exiting overload');
+    }
+    if (sim.I_peak !== 0) {
+      throw new Error('assertCriticalScenarios test6: I_peak must be reset to 0 after exiting overload, got=' + sim.I_peak);
+    }
 
     sim.circuitType  = savedCircuitType6;
     sim.batteryCount = savedBatteryCount6;
     sim.bulbCount    = savedBulbCount6;
     sim.bulbWatt     = savedBulbWatt6;
+    sim.V_total      = savedVtotal6;
+    sim.R_total      = savedRtotal6;
+    sim.I            = savedI6;
+    sim.I_peak       = savedIPeak6;
+    sim.P_actual     = savedPactual6;
+    sim.bulbState    = savedBulbState6;
+    sim.dimAlpha     = savedDimAlpha6;
     sim.wasOverload  = savedWasOverload6;
     sim.blastActive  = savedBlastActive6;
     sim.blastTime    = savedBlastTime6;
   }
 
-  function runSelfTests() {
-    assertSimMonomorphic();
-    assertGeometry();
-    assertParticleSystemMonomorphic();
-    assertBulbStateClassification();
-    assertRenderLayerOrder();
+  function assertBatteryLifeCalc() {
+    const EPS = 1;
 
-    const batteryOptions = [1, 2, 3, 4];
-    const bulbOptions    = [1, 2, 3, 4];
-    const wattOptions    = [5, 10, 25];
-    const typeOptions    = ['seri', 'paralel'];
-
-    for (const watt of wattOptions) {
-      assertRbulbPositive(watt);
+    const snap1 = computePhysicsSnapshot('seri', 1, 1, 10);
+    const totalCapacity1 = BATTERY_CAPACITY_MAH * 1;
+    const totalCurrentMa1 = snap1.I * 1000;
+    const expectedMinutes1 = Math.round(totalCapacity1 / totalCurrentMa1 * 60);
+    if (expectedMinutes1 <= 0) {
+      throw new Error('assertBatteryLifeCalc: battery life must be > 0 for normal circuit, got=' + expectedMinutes1);
     }
 
-    for (const batteries of batteryOptions) {
-      for (const bulbs of bulbOptions) {
-        for (const watt of wattOptions) {
-          for (const type of typeOptions) {
-            const result = computePhysicsSnapshot(type, batteries, bulbs, watt);
-            if (type === 'seri') {
-              assertSeriesCircuitLaw(result);
-            }
-            if (type === 'paralel') {
-              assertParallelCircuitLaw(result);
-            }
-            assertOhmLaw(result);
-            assertPowerLaw(result);
-            assertBulbStateExclusive(result);
-            assertOverloadBreaksCurrent(result);
-            assertDimAlphaRange(result);
-            if (result.I > 0) {
-              assertElectronSpeedProportional(result.I);
+    const snap2 = computePhysicsSnapshot('seri', 2, 1, 10);
+    const totalCapacity2 = BATTERY_CAPACITY_MAH * 2;
+    const totalCurrentMa2 = snap2.I * 1000;
+    const expectedMinutes2 = Math.round(totalCapacity2 / totalCurrentMa2 * 60);
+    if (expectedMinutes2 <= 0) {
+      throw new Error('assertBatteryLifeCalc: battery life must be > 0 for 2-battery circuit, got=' + expectedMinutes2);
+    }
+
+    const snap3 = computePhysicsSnapshot('seri', 4, 1, 5);
+    if (snap3.bulbState === 'overload') {
+      if (snap3.I !== 0) {
+        throw new Error('assertBatteryLifeCalc: overload I must be 0, got=' + snap3.I);
+      }
+    }
+
+    const snap4 = computePhysicsSnapshot('seri', 1, 4, 10);
+    const totalCapacity4 = BATTERY_CAPACITY_MAH * 1;
+    const totalCurrentMa4 = snap4.I * 1000;
+    const expectedMinutes4 = Math.round(totalCapacity4 / totalCurrentMa4 * 60);
+    const snap1minutes = Math.round((BATTERY_CAPACITY_MAH * 1) / (snap1.I * 1000) * 60);
+    if (expectedMinutes4 <= snap1minutes) {
+      throw new Error(
+        'assertBatteryLifeCalc: more bulbs in series = lower I = longer battery life, ' +
+        '4-bulb=' + expectedMinutes4 + ' 1-bulb=' + snap1minutes
+      );
+    }
+  }
+
+  function assertParallelIPerBulb() {
+    const EPS = 0.0001;
+
+    const bulbCounts = [1, 2, 3, 4];
+    for (const bulbs of bulbCounts) {
+      const snap = computePhysicsSnapshot('paralel', 1, bulbs, 10);
+      const iPerBulb = bulbs > 0 ? snap.I / bulbs : 0;
+
+      const expectedIPerBulb = V_BATTERY / ((V_BATTERY * V_BATTERY) / 10);
+      if (Math.abs(iPerBulb - expectedIPerBulb) > EPS) {
+        throw new Error(
+          'assertParallelIPerBulb: I per bulb must equal V_BATTERY/R_bulb for all bulb counts, ' +
+          'bulbs=' + bulbs + ' expected=' + expectedIPerBulb + ' got=' + iPerBulb
+        );
+      }
+
+      if (Math.abs(snap.P_actual - 10.0) > 0.001) {
+        throw new Error(
+          'assertParallelIPerBulb: P_actual must equal P_nominal for all bulb counts in paralel, ' +
+          'bulbs=' + bulbs + ' expected=10 got=' + snap.P_actual
+        );
+      }
+    }
+  }
+
+  function assertSeriesInvariant() {
+    const EPS = 0.001;
+
+    const snap1 = computePhysicsSnapshot('seri', 1, 1, 10);
+    const snap2 = computePhysicsSnapshot('seri', 2, 2, 10);
+    const snap3 = computePhysicsSnapshot('seri', 3, 3, 10);
+    const snap4 = computePhysicsSnapshot('seri', 4, 4, 10);
+
+    if (snap1.bulbState !== 'normal') {
+      throw new Error('assertSeriesInvariant: seri 1b1l 10W must be normal, got=' + snap1.bulbState);
+    }
+    if (snap2.bulbState !== 'normal') {
+      throw new Error('assertSeriesInvariant: seri 2b2l 10W must be normal, got=' + snap2.bulbState);
+    }
+    if (snap3.bulbState !== 'normal') {
+      throw new Error('assertSeriesInvariant: seri 3b3l 10W must be normal, got=' + snap3.bulbState);
+    }
+    if (snap4.bulbState !== 'normal') {
+      throw new Error('assertSeriesInvariant: seri 4b4l 10W must be normal, got=' + snap4.bulbState);
+    }
+
+    if (Math.abs(snap1.I - snap2.I) > EPS) {
+      throw new Error('assertSeriesInvariant: seri nB nL 10W must yield same I, 1b1l=' + snap1.I + ' 2b2l=' + snap2.I);
+    }
+    if (Math.abs(snap2.I - snap3.I) > EPS) {
+      throw new Error('assertSeriesInvariant: seri nB nL 10W must yield same I, 2b2l=' + snap2.I + ' 3b3l=' + snap3.I);
+    }
+    if (Math.abs(snap3.I - snap4.I) > EPS) {
+      throw new Error('assertSeriesInvariant: seri nB nL 10W must yield same I, 3b3l=' + snap3.I + ' 4b4l=' + snap4.I);
+    }
+
+    if (Math.abs(snap1.P_actual - snap2.P_actual) > EPS) {
+      throw new Error('assertSeriesInvariant: seri nB nL 10W must yield same P_actual, 1b1l=' + snap1.P_actual + ' 2b2l=' + snap2.P_actual);
+    }
+
+    const snapMoreBulbs = computePhysicsSnapshot('seri', 1, 2, 10);
+    if (snapMoreBulbs.I >= snap1.I) {
+      throw new Error('assertSeriesInvariant: more bulbs in series must reduce I, 1l=' + snap1.I + ' 2l=' + snapMoreBulbs.I);
+    }
+
+    const snap1b = computePhysicsSnapshot('seri', 1, 1, 25);
+    const snap2b = computePhysicsSnapshot('seri', 1, 2, 25);
+    if (snap1b.bulbState === 'normal' && snap2b.bulbState !== 'overload') {
+      if (snap2b.I >= snap1b.I) {
+        throw new Error('assertSeriesInvariant: more bulbs in series (25W) must reduce I, 1l=' + snap1b.I + ' 2l=' + snap2b.I);
+      }
+    }
+  }
+
+  function snapshotSim() {
+    return {
+      circuitType  : sim.circuitType,
+      batteryCount : sim.batteryCount,
+      bulbCount    : sim.bulbCount,
+      bulbWatt     : sim.bulbWatt,
+      V_total      : sim.V_total,
+      R_total      : sim.R_total,
+      I            : sim.I,
+      I_peak       : sim.I_peak,
+      P_actual     : sim.P_actual,
+      bulbState    : sim.bulbState,
+      dimAlpha     : sim.dimAlpha,
+      wasOverload  : sim.wasOverload,
+      blastTime    : sim.blastTime,
+      blastActive  : sim.blastActive,
+    };
+  }
+
+  function restoreSim(snapshot) {
+    sim.circuitType  = snapshot.circuitType;
+    sim.batteryCount = snapshot.batteryCount;
+    sim.bulbCount    = snapshot.bulbCount;
+    sim.bulbWatt     = snapshot.bulbWatt;
+    sim.V_total      = snapshot.V_total;
+    sim.R_total      = snapshot.R_total;
+    sim.I            = snapshot.I;
+    sim.I_peak       = snapshot.I_peak;
+    sim.P_actual     = snapshot.P_actual;
+    sim.bulbState    = snapshot.bulbState;
+    sim.dimAlpha     = snapshot.dimAlpha;
+    sim.wasOverload  = snapshot.wasOverload;
+    sim.blastTime    = snapshot.blastTime;
+    sim.blastActive  = snapshot.blastActive;
+    if (!snapshot.blastActive) {
+      blasts.length = 0;
+    }
+  }
+
+  function runSelfTests() {
+    const savedSim = snapshotSim();
+
+    try {
+      assertSimMonomorphic();
+      assertGeometry();
+      assertParticleSystemMonomorphic();
+      assertBulbStateClassification();
+      assertRenderLayerOrder();
+
+      const batteryOptions = [1, 2, 3, 4];
+      const bulbOptions    = [1, 2, 3, 4];
+      const wattOptions    = [5, 10, 25];
+      const typeOptions    = ['seri', 'paralel'];
+
+      for (const watt of wattOptions) {
+        assertRbulbPositive(watt);
+      }
+
+      for (const batteries of batteryOptions) {
+        for (const bulbs of bulbOptions) {
+          for (const watt of wattOptions) {
+            for (const type of typeOptions) {
+              const result = computePhysicsSnapshot(type, batteries, bulbs, watt);
+              if (type === 'seri') {
+                assertSeriesCircuitLaw(result);
+              }
+              if (type === 'paralel') {
+                assertParallelCircuitLaw(result);
+              }
+              assertOhmLaw(result);
+              assertPowerLaw(result);
+              assertBulbStateExclusive(result);
+              assertOverloadBreaksCurrent(result);
+              assertDimAlphaRange(result);
+              if (result.I > 0) {
+                assertElectronSpeedProportional(result.I);
+              }
             }
           }
         }
       }
+
+      assertElectronStillWhenZeroCurrent();
+
+      const currentSamples = [0.5, 1.0, 2.0, 5.0, 10.0];
+      for (const current of currentSamples) {
+        assertElectronSpeedProportional(current);
+      }
+
+      assertBlastTriggeredOncePerTransition();
+      assertCriticalScenarios();
+      assertBatteryLifeCalc();
+      assertParallelIPerBulb();
+      assertSeriesInvariant();
+
+      assertSimMonomorphic();
+    } finally {
+      restoreSim(savedSim);
     }
-
-    assertElectronStillWhenZeroCurrent();
-
-    const currentSamples = [0.5, 1.0, 2.0, 5.0, 10.0];
-    for (const current of currentSamples) {
-      assertElectronSpeedProportional(current);
-    }
-
-    assertBlastTriggeredOncePerTransition();
-    assertCriticalScenarios();
-
-    assertSimMonomorphic();
   }
 
   function init() {
@@ -1612,7 +1858,15 @@
     initElectrons(getGeometry().densePath);
     runPhysics();
     updateDisplay();
-    runSelfTests();
+
+    try {
+      runSelfTests();
+    } catch (testError) {
+      const errorBanner = document.createElement('div');
+      errorBanner.textContent = 'Self-test gagal: ' + testError.message;
+      errorBanner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#ff5252;color:#fff;padding:0.5rem 1rem;font-size:0.75rem;z-index:9999;';
+      document.body.appendChild(errorBanner);
+    }
 
     radiosCircuitType.forEach(r => r.addEventListener('change', onCircuitTypeChange));
     radiosBulbWatt.forEach(r => r.addEventListener('change', onBulbWattChange));
