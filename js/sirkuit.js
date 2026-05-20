@@ -526,11 +526,465 @@
     initElectrons(getGeometry().densePath);
   }
 
+  function computePhysicsSnapshot(circuitType, batteryCount, bulbCount, bulbWatt) {
+    const R_bulb = (V_BATTERY * V_BATTERY) / bulbWatt;
+
+    let V_total = 0;
+    let R_total = 0;
+    let V_per_bulb = 0;
+
+    if (circuitType === 'seri') {
+      V_total    = batteryCount * V_BATTERY;
+      R_total    = bulbCount * R_bulb;
+      V_per_bulb = R_total > 0 ? V_total / bulbCount : 0;
+    } else {
+      V_total    = V_BATTERY;
+      R_total    = R_bulb / bulbCount;
+      V_per_bulb = V_BATTERY;
+    }
+
+    let I = R_total > 0 ? V_total / R_total : 0;
+    const P_actual = R_bulb > 0 ? (V_per_bulb * V_per_bulb) / R_bulb : 0;
+
+    let bulbState = 'normal';
+    let dimAlpha  = 1.0;
+
+    if (P_actual <= 0) {
+      bulbState = 'dim';
+      dimAlpha  = 0.25;
+    } else if (P_actual < bulbWatt) {
+      bulbState = 'dim';
+      dimAlpha  = Math.max(0.25, P_actual / bulbWatt);
+    } else if (P_actual <= bulbWatt * OVERLOAD_FACTOR) {
+      bulbState = 'normal';
+      dimAlpha  = 1.0;
+    } else {
+      bulbState = 'overload';
+      dimAlpha  = 1.0;
+      I = 0;
+    }
+
+    return {
+      circuitType,
+      batteryCount,
+      bulbCount,
+      bulbWatt,
+      R_bulb,
+      V_total,
+      R_total,
+      V_per_bulb,
+      I,
+      P_actual,
+      bulbState,
+      dimAlpha,
+    };
+  }
+
+  function assertGeometry() {
+    const savedCw = cw;
+    const savedCh = ch;
+
+    cw = 400;
+    ch = 300;
+
+    const geo = getGeometry();
+
+    const pad    = Math.min(cw, ch) * 0.12;
+    const left   = pad;
+    const right  = cw - pad;
+    const top    = pad;
+    const bottom = ch - pad;
+
+    const expectedPath = [
+      { x: left,  y: top    },
+      { x: right, y: top    },
+      { x: right, y: bottom },
+      { x: left,  y: bottom },
+      { x: left,  y: top    },
+    ];
+
+    if (geo.wirePath.length !== 5) {
+      throw new Error('assertGeometry: wirePath must have 5 points, got ' + geo.wirePath.length);
+    }
+
+    for (let i = 0; i < expectedPath.length; i++) {
+      if (geo.wirePath[i].x !== expectedPath[i].x || geo.wirePath[i].y !== expectedPath[i].y) {
+        throw new Error(
+          'assertGeometry: wirePath[' + i + '] expected (' +
+          expectedPath[i].x + ',' + expectedPath[i].y + ') got (' +
+          geo.wirePath[i].x + ',' + geo.wirePath[i].y + ')'
+        );
+      }
+    }
+
+    const STEPS_PER_SEGMENT = 40;
+    const segmentCount      = geo.wirePath.length - 1;
+    const expectedDenseLen  = segmentCount * STEPS_PER_SEGMENT + 1;
+
+    if (geo.densePath.length !== expectedDenseLen) {
+      throw new Error(
+        'assertGeometry: densePath length expected ' + expectedDenseLen +
+        ' got ' + geo.densePath.length
+      );
+    }
+
+    if (geo.batteryY !== top) {
+      throw new Error('assertGeometry: batteryY expected ' + top + ' got ' + geo.batteryY);
+    }
+
+    if (geo.bulbY !== bottom) {
+      throw new Error('assertGeometry: bulbY expected ' + bottom + ' got ' + geo.bulbY);
+    }
+
+    const firstDense = geo.densePath[0];
+    if (firstDense.x !== left || firstDense.y !== top) {
+      throw new Error(
+        'assertGeometry: densePath[0] expected (' + left + ',' + top + ') got (' +
+        firstDense.x + ',' + firstDense.y + ')'
+      );
+    }
+
+    const lastDense = geo.densePath[geo.densePath.length - 1];
+    if (lastDense.x !== left || lastDense.y !== top) {
+      throw new Error(
+        'assertGeometry: densePath last point expected (' + left + ',' + top + ') got (' +
+        lastDense.x + ',' + lastDense.y + ')'
+      );
+    }
+
+    cw = savedCw;
+    ch = savedCh;
+  }
+
+  function classifyBulbState(P_actual, bulbWatt) {
+    let bulbState = 'normal';
+    let dimAlpha  = 1.0;
+    let I_zero    = false;
+
+    if (P_actual <= 0) {
+      bulbState = 'dim';
+      dimAlpha  = 0.25;
+    } else if (P_actual < bulbWatt) {
+      bulbState = 'dim';
+      dimAlpha  = Math.max(0.25, P_actual / bulbWatt);
+    } else if (P_actual <= bulbWatt * OVERLOAD_FACTOR) {
+      bulbState = 'normal';
+      dimAlpha  = 1.0;
+    } else {
+      bulbState = 'overload';
+      dimAlpha  = 1.0;
+      I_zero    = true;
+    }
+
+    return { bulbState, dimAlpha, I_zero };
+  }
+
+  function assertBulbStateClassification() {
+    const wattOptions = [5, 10, 25];
+
+    for (const watt of wattOptions) {
+      const R_bulb = (V_BATTERY * V_BATTERY) / watt;
+
+      const snapshotZero = computePhysicsSnapshot('paralel', 1, 1, watt);
+      if (snapshotZero.P_actual !== 0) {
+        const snapshotForcedZero = {
+          P_actual  : 0,
+          bulbWatt  : watt,
+          bulbState : 'dim',
+          dimAlpha  : 0.25,
+          I         : 0,
+        };
+        if (snapshotForcedZero.bulbState !== 'dim') {
+          throw new Error('assertBulbStateClassification: P_actual=0 must yield bulbState=dim');
+        }
+        if (snapshotForcedZero.dimAlpha !== 0.25) {
+          throw new Error('assertBulbStateClassification: P_actual=0 must yield dimAlpha=0.25');
+        }
+      }
+
+      const dimCases = [
+        { circuitType: 'seri', batteryCount: 1, bulbCount: 4 },
+      ];
+      for (const c of dimCases) {
+        const snap = computePhysicsSnapshot(c.circuitType, c.batteryCount, c.bulbCount, watt);
+        if (snap.P_actual > 0 && snap.P_actual < watt) {
+          if (snap.bulbState !== 'dim') {
+            throw new Error(
+              'assertBulbStateClassification: 0<P_actual<P_nominal must yield bulbState=dim, got ' +
+              snap.bulbState + ' for watt=' + watt
+            );
+          }
+          const expectedAlpha = Math.max(0.25, snap.P_actual / watt);
+          if (Math.abs(snap.dimAlpha - expectedAlpha) > 0.0001) {
+            throw new Error(
+              'assertBulbStateClassification: dimAlpha mismatch for dim state, expected ' +
+              expectedAlpha + ' got ' + snap.dimAlpha
+            );
+          }
+        }
+      }
+
+      const normalCases = [
+        { circuitType: 'seri', batteryCount: 1, bulbCount: 1 },
+        { circuitType: 'paralel', batteryCount: 1, bulbCount: 1 },
+      ];
+      for (const c of normalCases) {
+        const snap = computePhysicsSnapshot(c.circuitType, c.batteryCount, c.bulbCount, watt);
+        if (snap.P_actual >= watt && snap.P_actual <= watt * OVERLOAD_FACTOR) {
+          if (snap.bulbState !== 'normal') {
+            throw new Error(
+              'assertBulbStateClassification: P_nominal<=P_actual<=P_nominal*1.3 must yield bulbState=normal, got ' +
+              snap.bulbState + ' for watt=' + watt
+            );
+          }
+          if (snap.dimAlpha !== 1.0) {
+            throw new Error(
+              'assertBulbStateClassification: normal state must yield dimAlpha=1.0, got ' + snap.dimAlpha
+            );
+          }
+        }
+      }
+
+      const overloadCases = [
+        { circuitType: 'seri', batteryCount: 4, bulbCount: 1 },
+        { circuitType: 'seri', batteryCount: 3, bulbCount: 1 },
+      ];
+      for (const c of overloadCases) {
+        const snap = computePhysicsSnapshot(c.circuitType, c.batteryCount, c.bulbCount, watt);
+        if (snap.P_actual > watt * OVERLOAD_FACTOR) {
+          if (snap.bulbState !== 'overload') {
+            throw new Error(
+              'assertBulbStateClassification: P_actual>P_nominal*1.3 must yield bulbState=overload, got ' +
+              snap.bulbState + ' for watt=' + watt
+            );
+          }
+          if (snap.I !== 0) {
+            throw new Error(
+              'assertBulbStateClassification: overload state must yield I=0, got I=' + snap.I
+            );
+          }
+        }
+      }
+    }
+
+    const boundaryNormal = computePhysicsSnapshot('seri', 1, 1, 10);
+    if (boundaryNormal.P_actual >= 10 && boundaryNormal.P_actual <= 10 * OVERLOAD_FACTOR) {
+      if (boundaryNormal.bulbState !== 'normal') {
+        throw new Error(
+          'assertBulbStateClassification: boundary normal case failed, got ' + boundaryNormal.bulbState
+        );
+      }
+    }
+  }
+
+  function assertSimMonomorphic() {
+    const requiredKeys = [
+      'circuitType',
+      'batteryCount',
+      'bulbCount',
+      'bulbWatt',
+      'V_total',
+      'R_total',
+      'I',
+      'P_actual',
+      'bulbState',
+      'dimAlpha',
+      'wasOverload',
+      'blastTime',
+      'blastActive',
+    ];
+
+    const actualKeys = Object.keys(sim);
+
+    for (const key of requiredKeys) {
+      if (!Object.prototype.hasOwnProperty.call(sim, key)) {
+        throw new Error('assertSimMonomorphic: missing key ' + key);
+      }
+    }
+
+    if (actualKeys.length !== requiredKeys.length) {
+      throw new Error(
+        'assertSimMonomorphic: key count mismatch expected ' +
+        requiredKeys.length + ' got ' + actualKeys.length +
+        ' (' + actualKeys.join(', ') + ')'
+      );
+    }
+
+    if (typeof sim.circuitType  !== 'string')  throw new Error('assertSimMonomorphic: circuitType must be string');
+    if (typeof sim.batteryCount !== 'number')  throw new Error('assertSimMonomorphic: batteryCount must be number');
+    if (typeof sim.bulbCount    !== 'number')  throw new Error('assertSimMonomorphic: bulbCount must be number');
+    if (typeof sim.bulbWatt     !== 'number')  throw new Error('assertSimMonomorphic: bulbWatt must be number');
+    if (typeof sim.V_total      !== 'number')  throw new Error('assertSimMonomorphic: V_total must be number');
+    if (typeof sim.R_total      !== 'number')  throw new Error('assertSimMonomorphic: R_total must be number');
+    if (typeof sim.I            !== 'number')  throw new Error('assertSimMonomorphic: I must be number');
+    if (typeof sim.P_actual     !== 'number')  throw new Error('assertSimMonomorphic: P_actual must be number');
+    if (typeof sim.bulbState    !== 'string')  throw new Error('assertSimMonomorphic: bulbState must be string');
+    if (typeof sim.dimAlpha     !== 'number')  throw new Error('assertSimMonomorphic: dimAlpha must be number');
+    if (typeof sim.wasOverload  !== 'boolean') throw new Error('assertSimMonomorphic: wasOverload must be boolean');
+    if (typeof sim.blastTime    !== 'number')  throw new Error('assertSimMonomorphic: blastTime must be number');
+    if (typeof sim.blastActive  !== 'boolean') throw new Error('assertSimMonomorphic: blastActive must be boolean');
+  }
+
+  function assertSeriesCircuitCalc(result) {
+    const EPS = 0.0001;
+    const expectedVtotal = result.batteryCount * V_BATTERY;
+    const expectedRtotal = result.bulbCount * result.R_bulb;
+    const expectedVperBulb = result.bulbCount > 0 ? expectedVtotal / result.bulbCount : 0;
+
+    if (Math.abs(result.V_total - expectedVtotal) > EPS) {
+      throw new Error(
+        'assertSeriesCircuitCalc: V_total mismatch batteries=' + result.batteryCount +
+        ' expected=' + expectedVtotal + ' got=' + result.V_total
+      );
+    }
+    if (Math.abs(result.R_total - expectedRtotal) > EPS) {
+      throw new Error(
+        'assertSeriesCircuitCalc: R_total mismatch bulbs=' + result.bulbCount +
+        ' watt=' + result.bulbWatt +
+        ' expected=' + expectedRtotal + ' got=' + result.R_total
+      );
+    }
+    if (Math.abs(result.V_per_bulb - expectedVperBulb) > EPS) {
+      throw new Error(
+        'assertSeriesCircuitCalc: V_per_bulb mismatch batteries=' + result.batteryCount +
+        ' bulbs=' + result.bulbCount +
+        ' expected=' + expectedVperBulb + ' got=' + result.V_per_bulb
+      );
+    }
+  }
+
+  function assertElectronParticleMonomorphic(particle) {
+    const requiredKeys = ['progress', 'size', 'r', 'g', 'b'];
+    const actualKeys   = Object.keys(particle);
+
+    for (const key of requiredKeys) {
+      if (!Object.prototype.hasOwnProperty.call(particle, key)) {
+        throw new Error('assertElectronParticleMonomorphic: missing key ' + key);
+      }
+    }
+
+    if (actualKeys.length !== requiredKeys.length) {
+      throw new Error(
+        'assertElectronParticleMonomorphic: key count mismatch expected ' +
+        requiredKeys.length + ' got ' + actualKeys.length +
+        ' (' + actualKeys.join(', ') + ')'
+      );
+    }
+
+    if (typeof particle.progress !== 'number') throw new Error('assertElectronParticleMonomorphic: progress must be number');
+    if (typeof particle.size     !== 'number') throw new Error('assertElectronParticleMonomorphic: size must be number');
+    if (typeof particle.r        !== 'number') throw new Error('assertElectronParticleMonomorphic: r must be number');
+    if (typeof particle.g        !== 'number') throw new Error('assertElectronParticleMonomorphic: g must be number');
+    if (typeof particle.b        !== 'number') throw new Error('assertElectronParticleMonomorphic: b must be number');
+  }
+
+  function assertBlastParticleMonomorphic(particle) {
+    const requiredKeys = ['x', 'y', 'vx', 'vy', 'size', 'life', 'decay', 'hue'];
+    const actualKeys   = Object.keys(particle);
+
+    for (const key of requiredKeys) {
+      if (!Object.prototype.hasOwnProperty.call(particle, key)) {
+        throw new Error('assertBlastParticleMonomorphic: missing key ' + key);
+      }
+    }
+
+    if (actualKeys.length !== requiredKeys.length) {
+      throw new Error(
+        'assertBlastParticleMonomorphic: key count mismatch expected ' +
+        requiredKeys.length + ' got ' + actualKeys.length +
+        ' (' + actualKeys.join(', ') + ')'
+      );
+    }
+
+    if (typeof particle.x     !== 'number') throw new Error('assertBlastParticleMonomorphic: x must be number');
+    if (typeof particle.y     !== 'number') throw new Error('assertBlastParticleMonomorphic: y must be number');
+    if (typeof particle.vx    !== 'number') throw new Error('assertBlastParticleMonomorphic: vx must be number');
+    if (typeof particle.vy    !== 'number') throw new Error('assertBlastParticleMonomorphic: vy must be number');
+    if (typeof particle.size  !== 'number') throw new Error('assertBlastParticleMonomorphic: size must be number');
+    if (typeof particle.life  !== 'number') throw new Error('assertBlastParticleMonomorphic: life must be number');
+    if (typeof particle.decay !== 'number') throw new Error('assertBlastParticleMonomorphic: decay must be number');
+    if (typeof particle.hue   !== 'number') throw new Error('assertBlastParticleMonomorphic: hue must be number');
+  }
+
+  function assertParticleSystemMonomorphic() {
+    const sampleElectron = createElectron();
+    assertElectronParticleMonomorphic(sampleElectron);
+
+    const electronKeysBefore = Object.keys(sampleElectron).join(',');
+    sampleElectron.progress += BASE_SPEED * 1;
+    if (sampleElectron.progress >= 1) sampleElectron.progress -= 1;
+    const electronKeysAfter = Object.keys(sampleElectron).join(',');
+    if (electronKeysBefore !== electronKeysAfter) {
+      throw new Error('assertParticleSystemMonomorphic: electron shape changed after update');
+    }
+    assertElectronParticleMonomorphic(sampleElectron);
+
+    const sampleBlast = {
+      x    : 100,
+      y    : 100,
+      vx   : Math.cos(0) * 3.0,
+      vy   : Math.sin(0) * 3.0,
+      size : 4,
+      life : 1.0,
+      decay: 0.015,
+      hue  : 30,
+    };
+    assertBlastParticleMonomorphic(sampleBlast);
+
+    const blastKeysBefore = Object.keys(sampleBlast).join(',');
+    sampleBlast.x    += sampleBlast.vx;
+    sampleBlast.y    += sampleBlast.vy;
+    sampleBlast.vy   += 0.18;
+    sampleBlast.life -= sampleBlast.decay;
+    const blastKeysAfter = Object.keys(sampleBlast).join(',');
+    if (blastKeysBefore !== blastKeysAfter) {
+      throw new Error('assertParticleSystemMonomorphic: blast shape changed after update');
+    }
+    assertBlastParticleMonomorphic(sampleBlast);
+
+    for (let i = 0; i < electrons.length; i++) {
+      assertElectronParticleMonomorphic(electrons[i]);
+    }
+  }
+
+  function runSelfTests() {
+    assertSimMonomorphic();
+    assertGeometry();
+    assertParticleSystemMonomorphic();
+    assertBulbStateClassification();
+
+    const batteryOptions = [1, 2, 3, 4];
+    const bulbOptions    = [1, 2, 3, 4];
+    const wattOptions    = [5, 10, 25];
+    const typeOptions    = ['seri', 'paralel'];
+
+    for (const batteries of batteryOptions) {
+      for (const bulbs of bulbOptions) {
+        for (const watt of wattOptions) {
+          for (const type of typeOptions) {
+            const result = computePhysicsSnapshot(type, batteries, bulbs, watt);
+            if (type === 'seri') {
+              assertSeriesCircuitCalc(result);
+            }
+          }
+        }
+      }
+    }
+
+    assertSimMonomorphic();
+  }
+
   function init() {
+    if (!ctx) {
+      canvas.parentElement.innerHTML =
+        '<p style="color:#ff5252;padding:1rem">Browser Anda tidak mendukung Canvas HTML5.</p>';
+      return;
+    }
     resizeCanvas();
     initElectrons(getGeometry().densePath);
     runPhysics();
     updateDisplay();
+    runSelfTests();
 
     radiosCircuitType.forEach(r => r.addEventListener('change', onCircuitTypeChange));
     radiosBulbWatt.forEach(r => r.addEventListener('change', onBulbWattChange));

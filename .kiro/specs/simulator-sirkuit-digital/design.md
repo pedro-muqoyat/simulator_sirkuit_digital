@@ -30,6 +30,10 @@ Aturan-aturan berikut berlaku untuk **seluruh file kode sumber** (`index.html`, 
 
 7. **Canvas-Only Rendering:** Seluruh visualisasi sirkuit, partikel, dan animasi wajib digambar eksklusif menggunakan HTML5 Canvas 2D API. Dilarang menggunakan animasi CSS atau manipulasi DOM untuk efek visual.
 
+8. **Isolasi Berkas Pengujian:** Dilarang keras menghasilkan file HTML atau JavaScript tambahan untuk keperluan testing (seperti `*.test.js`, `*.spec.js`, `test.html`). Seluruh arsitektur proyek wajib terkunci pada 3 berkas utama: `index.html`, `css/style.css`, dan `js/sirkuit.js`. Seluruh kode pengujian (property tests, unit tests) WAJIB dipendam langsung di dalam `js/sirkuit.js` sebagai fungsi `runSelfTests()`.
+
+9. **Batasan Hak Akses Terminal:** Agen AI dilarang keras mengeksekusi perintah terminal atau CLI dalam bentuk apapun — termasuk perintah bash, sh, npm install, touch, git, atau npx. Seluruh instruksi wajib diselesaikan murni melalui pembaruan kode sumber di dalam editor.
+
 ---
 
 ## Architecture

@@ -33,6 +33,8 @@ inclusion: always
 - **Substitusi UI Anak:** Gunakan pendekatan visual murni berbasis manipulasi warna CSS/Canvas (seperti kilatan warna kuning cerah untuk lampu menyala atau partikel pecahan lingkaran merah untuk kondisi overload) untuk menarik perhatian siswa SD, tanpa melibatkan karakter emoji teks.
 - **Gaya Penulisan:** Seluruh kejelasan alur logika program wajib direpresentasikan melalui teknik *Self-Documenting Code* (menggunakan penamaan variabel, kelas, dan fungsi yang deskriptif dan ekspresif).
 - **Kesiapan Produksi:** Setiap blok kode HTML, CSS, dan JavaScript yang disajikan harus ditulis secara utuh, lengkap, bebas kesalahan sintaksis, dan langsung siap dikompresi ke format berkas .ZIP.
+- **Isolasi Berkas Pengujian:** Dilarang keras menghasilkan file HTML atau JavaScript tambahan untuk keperluan testing (seperti *.test.js, *.spec.js, test.html). Seluruh arsitektur proyek wajib terkunci pada 3 berkas utama: index.html, css/style.css, dan js/sirkuit.js.
+- **Batasan Hak Akses Terminal:** Agen AI dilarang keras mengeksekusi perintah terminal atau CLI dalam bentuk apa pun (termasuk perintah bash, sh, npm install, touch, git, atau npx). Seluruh instruksi harus diselesaikan murni melalui pembaruan kode sumber di dalam editor.
    
    Learn about inclusion modes: https://kiro.dev/docs/steering/#inclusion-modes
 -------------------------------------------------------------------------------------> 

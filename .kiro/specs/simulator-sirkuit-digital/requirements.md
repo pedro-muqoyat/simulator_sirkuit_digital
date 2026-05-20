@@ -42,6 +42,7 @@ Simulator Sirkuit Digital (Petualangan Arus Elektron) adalah aplikasi web edukas
 4. WHEN halaman pertama kali dimuat, THE Simulator SHALL menampilkan Circuit default (rangkaian seri, 1 baterai, Bulb 10W) dalam keadaan aktif; THE Animation_Loop SHALL berjalan hanya ketika Circuit dalam keadaan aktif sehingga animasi dan status aktif Circuit selalu tersinkronisasi.
 5. THE Simulator SHALL menggunakan elemen `<canvas>` HTML5 sebagai satu-satunya media rendering untuk kabel, Battery, Bulb, dan Particle_System.
 6. THE Simulator SHALL memperbolehkan keberadaan file tambahan (seperti dokumentasi atau aset gambar) di luar tiga file inti, selama tiga file inti (`index.html`, `css/style.css`, `js/sirkuit.js`) tetap ada dan berfungsi.
+7. THE Simulator SHALL TIDAK memiliki file testing terpisah (seperti `*.test.js`, `*.spec.js`, atau `test.html`); seluruh kode pengujian WAJIB dipendam di dalam `js/sirkuit.js` sebagai fungsi `runSelfTests()` yang dipanggil saat inisialisasi.
 
 ---
 
