@@ -42,6 +42,11 @@ inclusion: always
 - **Atomic Modification (No Rewrite Storms):** To save TPM (Tokens Per Minute), do not rewrite the entire 500+ lines of code if you only need to modify a single function. Output only the targeted function or use localized search-and-replace patches, while ensuring no code is truncated within that specific targeted function.
 - **One-Shot Tool Call Restriction:** Prevent inner reflection storms. The AI must compute the physics formulas and canvas draw paths entirely in memory before executing a write action. Multi-turn inner loops or self-correction call chaining within a single prompt turn are strictly prohibited to avoid hitting RPM limits.
 - **Repetitive Indexing Denial:** Do not execute blanket directory scans, regex file searching (`grep`), or read architectural documents (`design.md`, `requirements.md`) repetitively once they have been loaded into the session cache.
+
+## 7. Aturan Fungsional Fitur Sakelar & Interaksi Komponen
+- **State Sirkuit Terbuka:** Implementasikan variabel status `isSakelarTertutup` dan `isKabelPutus` sebagai kontrol mutlak atas jalannya arus listrik. Jika salah satu bernilai tidak aktif, paksa nilai arus global menjadi nol secara instan.
+- **Logika Mutasi Rangkaian Seri vs Paralel:** Logika pencabutan komponen wajib merefleksikan karakteristik fisik asli sirkuit. Pada rangkaian seri, satu komponen dicabut harus memutuskan seluruh sirkuit. Pada rangkaian paralel, komponen dicabut hanya mematikan cabang terkait melalui penyesuaian resiprokal hambatan aktif.
+- **UI Update via textContent:** Teks penjelasan status (Overload, Normal, Redup, Sirkuit Terbuka) wajib disuntikkan ke elemen HTML menggunakan properti `textContent` terisolasi untuk menghindari bencana penurunan performa akibat Layout Thrashing pada mesin peramban.
    
    Learn about inclusion modes: https://kiro.dev/docs/steering/#inclusion-modes
 -------------------------------------------------------------------------------------> 
