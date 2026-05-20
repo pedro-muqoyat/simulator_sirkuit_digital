@@ -35,6 +35,13 @@ inclusion: always
 - **Kesiapan Produksi:** Setiap blok kode HTML, CSS, dan JavaScript yang disajikan harus ditulis secara utuh, lengkap, bebas kesalahan sintaksis, dan langsung siap dikompresi ke format berkas .ZIP.
 - **Isolasi Berkas Pengujian:** Dilarang keras menghasilkan file HTML atau JavaScript tambahan untuk keperluan testing (seperti *.test.js, *.spec.js, test.html). Seluruh arsitektur proyek wajib terkunci pada 3 berkas utama: index.html, css/style.css, dan js/sirkuit.js.
 - **Batasan Hak Akses Terminal:** Agen AI dilarang keras mengeksekusi perintah terminal atau CLI dalam bentuk apa pun (termasuk perintah bash, sh, npm install, touch, git, atau npx). Seluruh instruksi harus diselesaikan murni melalui pembaruan kode sumber di dalam editor.
+
+## 6. Hardened Rate-Limit Guardrails & Token Footprint Control
+- **Zero-Overhead Reasoning:** The AI Agent is strictly forbidden from outputting conversational chatter, long explanations, or verbose inner thoughts before generating code. Go straight to the code block execution to minimize output token consumption.
+- **Strict Single-File Context Isolation:** When executing tasks inside `js/sirkuit.js`, the AI MUST NOT issue automated tool calls to read `index.html` or `css/style.css` unless explicitly commanded by the human engineer. Keep the context window bounded strictly to the file being edited.
+- **Atomic Modification (No Rewrite Storms):** To save TPM (Tokens Per Minute), do not rewrite the entire 500+ lines of code if you only need to modify a single function. Output only the targeted function or use localized search-and-replace patches, while ensuring no code is truncated within that specific targeted function.
+- **One-Shot Tool Call Restriction:** Prevent inner reflection storms. The AI must compute the physics formulas and canvas draw paths entirely in memory before executing a write action. Multi-turn inner loops or self-correction call chaining within a single prompt turn are strictly prohibited to avoid hitting RPM limits.
+- **Repetitive Indexing Denial:** Do not execute blanket directory scans, regex file searching (`grep`), or read architectural documents (`design.md`, `requirements.md`) repetitively once they have been loaded into the session cache.
    
    Learn about inclusion modes: https://kiro.dev/docs/steering/#inclusion-modes
 -------------------------------------------------------------------------------------> 

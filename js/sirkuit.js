@@ -825,7 +825,7 @@
     if (typeof sim.blastActive  !== 'boolean') throw new Error('assertSimMonomorphic: blastActive must be boolean');
   }
 
-  function assertSeriesCircuitCalc(result) {
+  function assertSeriesCircuitLaw(result) {
     const EPS = 0.0001;
     const expectedVtotal = result.batteryCount * V_BATTERY;
     const expectedRtotal = result.bulbCount * result.R_bulb;
@@ -833,20 +833,20 @@
 
     if (Math.abs(result.V_total - expectedVtotal) > EPS) {
       throw new Error(
-        'assertSeriesCircuitCalc: V_total mismatch batteries=' + result.batteryCount +
+        'assertSeriesCircuitLaw: V_total mismatch batteries=' + result.batteryCount +
         ' expected=' + expectedVtotal + ' got=' + result.V_total
       );
     }
     if (Math.abs(result.R_total - expectedRtotal) > EPS) {
       throw new Error(
-        'assertSeriesCircuitCalc: R_total mismatch bulbs=' + result.bulbCount +
+        'assertSeriesCircuitLaw: R_total mismatch bulbs=' + result.bulbCount +
         ' watt=' + result.bulbWatt +
         ' expected=' + expectedRtotal + ' got=' + result.R_total
       );
     }
     if (Math.abs(result.V_per_bulb - expectedVperBulb) > EPS) {
       throw new Error(
-        'assertSeriesCircuitCalc: V_per_bulb mismatch batteries=' + result.batteryCount +
+        'assertSeriesCircuitLaw: V_per_bulb mismatch batteries=' + result.batteryCount +
         ' bulbs=' + result.bulbCount +
         ' expected=' + expectedVperBulb + ' got=' + result.V_per_bulb
       );
@@ -945,6 +945,594 @@
     for (let i = 0; i < electrons.length; i++) {
       assertElectronParticleMonomorphic(electrons[i]);
     }
+
+    spawnBlast(200, 150);
+    if (blasts.length !== BLAST_COUNT) {
+      throw new Error(
+        'assertParticleSystemMonomorphic: spawnBlast must produce exactly ' +
+        BLAST_COUNT + ' particles, got ' + blasts.length
+      );
+    }
+    for (let i = 0; i < blasts.length; i++) {
+      assertBlastParticleMonomorphic(blasts[i]);
+    }
+    const blastKeysFromSpawn = Object.keys(blasts[0]).join(',');
+    blasts[0].x    += blasts[0].vx;
+    blasts[0].y    += blasts[0].vy;
+    blasts[0].vy   += 0.18;
+    blasts[0].life -= blasts[0].decay;
+    const blastKeysFromSpawnAfter = Object.keys(blasts[0]).join(',');
+    if (blastKeysFromSpawn !== blastKeysFromSpawnAfter) {
+      throw new Error('assertParticleSystemMonomorphic: spawned blast shape changed after update');
+    }
+    assertBlastParticleMonomorphic(blasts[0]);
+    blasts.length = 0;
+  }
+
+  function assertElectronSpeedProportional(current) {
+    const EPS = 0.0001;
+
+    if (current <= 0) {
+      return;
+    }
+
+    const speedFactor = Math.min(current * 8, 6);
+
+    if (speedFactor <= 0) {
+      throw new Error(
+        'assertElectronSpeedProportional: speedFactor must be > 0 when I > 0, got=' +
+        speedFactor + ' for I=' + current
+      );
+    }
+
+    if (speedFactor > 6) {
+      throw new Error(
+        'assertElectronSpeedProportional: speedFactor must be <= 6 (cap), got=' +
+        speedFactor + ' for I=' + current
+      );
+    }
+
+    const expectedSpeedFactor = Math.min(current * 8, 6);
+    if (Math.abs(speedFactor - expectedSpeedFactor) > EPS) {
+      throw new Error(
+        'assertElectronSpeedProportional: speedFactor mismatch for I=' + current +
+        ' expected=' + expectedSpeedFactor + ' got=' + speedFactor
+      );
+    }
+
+    const progressBefore = 0.5;
+    const progressAfter  = progressBefore + BASE_SPEED * speedFactor;
+    if (progressAfter <= progressBefore) {
+      throw new Error(
+        'assertElectronSpeedProportional: progress must increase when I > 0, I=' + current
+      );
+    }
+
+    const testParticle = { progress: 0.5, size: 4, r: 79, g: 195, b: 247 };
+    const fakeDensePath = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+    const progressSnapshot = testParticle.progress;
+    const savedElectrons = electrons.splice(0, electrons.length, testParticle);
+    updateElectrons(fakeDensePath, speedFactor);
+    const actualDelta = testParticle.progress - progressSnapshot;
+    electrons.splice(0, electrons.length, ...savedElectrons);
+
+    const expectedDelta = BASE_SPEED * speedFactor;
+    if (Math.abs(actualDelta - expectedDelta) > EPS) {
+      throw new Error(
+        'assertElectronSpeedProportional: updateElectrons delta mismatch for I=' + current +
+        ' expected delta=' + expectedDelta + ' got=' + actualDelta
+      );
+    }
+  }
+
+  function assertElectronStillWhenZeroCurrent() {
+    const testParticle = { progress: 0.5, size: 4, r: 79, g: 195, b: 247 };
+    const fakeDensePath = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+    const progressSnapshot = testParticle.progress;
+
+    const savedI = sim.I;
+    sim.I = 0;
+
+    const savedElectrons = electrons.splice(0, electrons.length, testParticle);
+
+    if (sim.I > 0) {
+      const speedFactor = Math.min(sim.I * 8, 6);
+      updateElectrons(fakeDensePath, speedFactor);
+    }
+
+    const progressAfter = testParticle.progress;
+    electrons.splice(0, electrons.length, ...savedElectrons);
+    sim.I = savedI;
+
+    if (progressAfter !== progressSnapshot) {
+      throw new Error(
+        'assertElectronStillWhenZeroCurrent: progress must not change when sim.I = 0, ' +
+        'before=' + progressSnapshot + ' after=' + progressAfter
+      );
+    }
+
+    const zeroSpeedFactor = 0;
+    const progressBefore = 0.5;
+    const progressAfterFormula = progressBefore + BASE_SPEED * zeroSpeedFactor;
+    if (progressAfterFormula !== progressBefore) {
+      throw new Error(
+        'assertElectronStillWhenZeroCurrent: BASE_SPEED * 0 must yield no progress change'
+      );
+    }
+  }
+
+  function assertRbulbPositive(watt) {
+    const EPS    = 0.0001;
+    const R_bulb = (V_BATTERY * V_BATTERY) / watt;
+    if (R_bulb <= 0) {
+      throw new Error(
+        'assertRbulbPositive: R_bulb must be > 0 for watt=' + watt +
+        ' got=' + R_bulb
+      );
+    }
+    const expectedRbulb = (V_BATTERY * V_BATTERY) / watt;
+    if (Math.abs(R_bulb - expectedRbulb) > EPS) {
+      throw new Error(
+        'assertRbulbPositive: R_bulb mismatch for watt=' + watt +
+        ' expected=' + expectedRbulb + ' got=' + R_bulb
+      );
+    }
+  }
+
+  function assertOhmLaw(result) {
+    const EPS = 0.0001;
+    if (result.bulbState === 'overload') {
+      return;
+    }
+    if (result.R_total <= 0) {
+      return;
+    }
+    const expectedI = result.V_total / result.R_total;
+    if (Math.abs(result.I - expectedI) > EPS) {
+      throw new Error(
+        'assertOhmLaw: I mismatch type=' + result.circuitType +
+        ' batteries=' + result.batteryCount +
+        ' bulbs=' + result.bulbCount +
+        ' watt=' + result.bulbWatt +
+        ' expected=' + expectedI + ' got=' + result.I
+      );
+    }
+  }
+
+  function assertPowerLaw(result) {
+    const EPS    = 0.0001;
+    const R_bulb = (V_BATTERY * V_BATTERY) / result.bulbWatt;
+    if (R_bulb <= 0) {
+      return;
+    }
+    const expectedP = (result.V_per_bulb * result.V_per_bulb) / R_bulb;
+    if (Math.abs(result.P_actual - expectedP) > EPS) {
+      throw new Error(
+        'assertPowerLaw: P_actual mismatch type=' + result.circuitType +
+        ' batteries=' + result.batteryCount +
+        ' bulbs=' + result.bulbCount +
+        ' watt=' + result.bulbWatt +
+        ' expected=' + expectedP + ' got=' + result.P_actual
+      );
+    }
+  }
+
+  function assertRenderLayerOrder() {
+    const savedI           = sim.I;
+    const savedBlastActive = sim.blastActive;
+    const savedBlastTime   = sim.blastTime;
+
+    function simulateRenderLogic(currentI, currentBlastActive, currentBlastTime) {
+      const callLog = [];
+
+      const fakeDrawBackground    = function() { callLog.push('drawBackground'); };
+      const fakeDrawWires         = function() { callLog.push('drawWires'); };
+      const fakeDrawBatteries     = function() { callLog.push('drawBatteries'); };
+      const fakeDrawBulbs         = function() { callLog.push('drawBulbs'); };
+      const fakeDrawPhysicsLabels = function() { callLog.push('drawPhysicsLabels'); };
+      const fakeDrawElectrons     = function() { callLog.push('drawElectrons'); };
+      const fakeDrawBlasts        = function() { callLog.push('drawBlasts'); };
+      const fakeUpdateElectrons   = function() {};
+      const fakeUpdateBlasts      = function() {};
+
+      fakeDrawBackground();
+      fakeDrawWires();
+      fakeDrawBatteries();
+      fakeDrawBulbs();
+      fakeDrawPhysicsLabels();
+
+      if (currentI > 0) {
+        fakeUpdateElectrons();
+        fakeDrawElectrons();
+      }
+
+      if (currentBlastActive) {
+        const elapsed = Date.now() - currentBlastTime;
+        if (elapsed < BLAST_DURATION_MS) {
+          fakeUpdateBlasts();
+          fakeDrawBlasts();
+        }
+      }
+
+      return callLog;
+    }
+
+    function assertLayerSequence(log, expected, label) {
+      if (log.length !== expected.length) {
+        throw new Error(
+          'assertRenderLayerOrder [' + label + ']: call count expected ' +
+          expected.length + ' got ' + log.length +
+          ' (' + log.join(', ') + ')'
+        );
+      }
+      for (let i = 0; i < expected.length; i++) {
+        if (log[i] !== expected[i]) {
+          throw new Error(
+            'assertRenderLayerOrder [' + label + ']: layer[' + i + '] expected ' +
+            expected[i] + ' got ' + log[i]
+          );
+        }
+      }
+    }
+
+    const recentBlastTime  = Date.now() - 100;
+    const expiredBlastTime = Date.now() - (BLAST_DURATION_MS + 100);
+
+    const logAllActive = simulateRenderLogic(1.5, true, recentBlastTime);
+    assertLayerSequence(logAllActive, [
+      'drawBackground',
+      'drawWires',
+      'drawBatteries',
+      'drawBulbs',
+      'drawPhysicsLabels',
+      'drawElectrons',
+      'drawBlasts',
+    ], 'all-active');
+
+    const logNoElectrons = simulateRenderLogic(0, true, recentBlastTime);
+    assertLayerSequence(logNoElectrons, [
+      'drawBackground',
+      'drawWires',
+      'drawBatteries',
+      'drawBulbs',
+      'drawPhysicsLabels',
+      'drawBlasts',
+    ], 'no-electrons');
+    if (logNoElectrons.indexOf('drawElectrons') !== -1) {
+      throw new Error(
+        'assertRenderLayerOrder: drawElectrons must not be called when sim.I = 0'
+      );
+    }
+
+    const logNoBlasts = simulateRenderLogic(1.5, false, recentBlastTime);
+    assertLayerSequence(logNoBlasts, [
+      'drawBackground',
+      'drawWires',
+      'drawBatteries',
+      'drawBulbs',
+      'drawPhysicsLabels',
+      'drawElectrons',
+    ], 'no-blasts');
+    if (logNoBlasts.indexOf('drawBlasts') !== -1) {
+      throw new Error(
+        'assertRenderLayerOrder: drawBlasts must not be called when sim.blastActive = false'
+      );
+    }
+
+    const logNeither = simulateRenderLogic(0, false, recentBlastTime);
+    assertLayerSequence(logNeither, [
+      'drawBackground',
+      'drawWires',
+      'drawBatteries',
+      'drawBulbs',
+      'drawPhysicsLabels',
+    ], 'neither-active');
+    if (logNeither.indexOf('drawElectrons') !== -1) {
+      throw new Error(
+        'assertRenderLayerOrder: drawElectrons must not be called when sim.I = 0 (neither case)'
+      );
+    }
+    if (logNeither.indexOf('drawBlasts') !== -1) {
+      throw new Error(
+        'assertRenderLayerOrder: drawBlasts must not be called when sim.blastActive = false (neither case)'
+      );
+    }
+
+    const logExpiredBlast = simulateRenderLogic(1.5, true, expiredBlastTime);
+    assertLayerSequence(logExpiredBlast, [
+      'drawBackground',
+      'drawWires',
+      'drawBatteries',
+      'drawBulbs',
+      'drawPhysicsLabels',
+      'drawElectrons',
+    ], 'expired-blast');
+    if (logExpiredBlast.indexOf('drawBlasts') !== -1) {
+      throw new Error(
+        'assertRenderLayerOrder: drawBlasts must not be called when blast duration has expired'
+      );
+    }
+
+    sim.I           = savedI;
+    sim.blastActive = savedBlastActive;
+    sim.blastTime   = savedBlastTime;
+  }
+
+  function assertParallelCircuitLaw(result) {
+    const EPS = 0.0001;
+
+    if (result.V_total !== V_BATTERY) {
+      throw new Error(
+        'assertParallelCircuitLaw: V_total must equal V_BATTERY=' + V_BATTERY +
+        ' got=' + result.V_total +
+        ' batteries=' + result.batteryCount +
+        ' bulbs=' + result.bulbCount +
+        ' watt=' + result.bulbWatt
+      );
+    }
+
+    const expectedRtotal = result.R_bulb / result.bulbCount;
+    if (Math.abs(result.R_total - expectedRtotal) > EPS) {
+      throw new Error(
+        'assertParallelCircuitLaw: R_total mismatch bulbs=' + result.bulbCount +
+        ' watt=' + result.bulbWatt +
+        ' expected=' + expectedRtotal + ' got=' + result.R_total
+      );
+    }
+
+    if (result.V_per_bulb !== V_BATTERY) {
+      throw new Error(
+        'assertParallelCircuitLaw: V_per_bulb must equal V_BATTERY=' + V_BATTERY +
+        ' got=' + result.V_per_bulb +
+        ' bulbs=' + result.bulbCount +
+        ' watt=' + result.bulbWatt
+      );
+    }
+  }
+
+  function assertBulbStateExclusive(result) {
+    const validStates = ['dim', 'normal', 'overload'];
+    if (validStates.indexOf(result.bulbState) === -1) {
+      throw new Error(
+        'assertBulbStateExclusive: bulbState must be dim, normal, or overload, got=' +
+        result.bulbState +
+        ' type=' + result.circuitType +
+        ' batteries=' + result.batteryCount +
+        ' bulbs=' + result.bulbCount +
+        ' watt=' + result.bulbWatt
+      );
+    }
+
+    if (result.P_actual <= 0) {
+      if (result.bulbState !== 'dim') {
+        throw new Error(
+          'assertBulbStateExclusive: P_actual<=0 must yield dim, got=' + result.bulbState +
+          ' type=' + result.circuitType +
+          ' batteries=' + result.batteryCount +
+          ' bulbs=' + result.bulbCount +
+          ' watt=' + result.bulbWatt
+        );
+      }
+    } else if (result.P_actual < result.bulbWatt) {
+      if (result.bulbState !== 'dim') {
+        throw new Error(
+          'assertBulbStateExclusive: 0<P_actual<bulbWatt must yield dim, got=' + result.bulbState +
+          ' P_actual=' + result.P_actual +
+          ' bulbWatt=' + result.bulbWatt
+        );
+      }
+    } else if (result.P_actual <= result.bulbWatt * OVERLOAD_FACTOR) {
+      if (result.bulbState !== 'normal') {
+        throw new Error(
+          'assertBulbStateExclusive: bulbWatt<=P_actual<=bulbWatt*1.3 must yield normal, got=' + result.bulbState +
+          ' P_actual=' + result.P_actual +
+          ' bulbWatt=' + result.bulbWatt
+        );
+      }
+    } else {
+      if (result.bulbState !== 'overload') {
+        throw new Error(
+          'assertBulbStateExclusive: P_actual>bulbWatt*1.3 must yield overload, got=' + result.bulbState +
+          ' P_actual=' + result.P_actual +
+          ' bulbWatt=' + result.bulbWatt
+        );
+      }
+    }
+  }
+
+  function assertOverloadBreaksCurrent(result) {
+    if (result.bulbState === 'overload') {
+      if (result.I !== 0) {
+        throw new Error(
+          'assertOverloadBreaksCurrent: I must be exactly 0 when bulbState=overload, got I=' + result.I +
+          ' type=' + result.circuitType +
+          ' batteries=' + result.batteryCount +
+          ' bulbs=' + result.bulbCount +
+          ' watt=' + result.bulbWatt
+        );
+      }
+    }
+  }
+
+  function assertDimAlphaRange(result) {
+    if (result.bulbState !== 'dim') {
+      return;
+    }
+
+    if (result.P_actual > 0) {
+      if (result.dimAlpha < 0.25 || result.dimAlpha >= 1.0) {
+        throw new Error(
+          'assertDimAlphaRange: dimAlpha must be in [0.25, 1.0) when dim and P_actual>0, got=' + result.dimAlpha +
+          ' P_actual=' + result.P_actual +
+          ' type=' + result.circuitType +
+          ' batteries=' + result.batteryCount +
+          ' bulbs=' + result.bulbCount +
+          ' watt=' + result.bulbWatt
+        );
+      }
+    } else {
+      if (result.dimAlpha !== 0.25) {
+        throw new Error(
+          'assertDimAlphaRange: dimAlpha must be exactly 0.25 when dim and P_actual=0, got=' + result.dimAlpha +
+          ' type=' + result.circuitType +
+          ' batteries=' + result.batteryCount +
+          ' bulbs=' + result.bulbCount +
+          ' watt=' + result.bulbWatt
+        );
+      }
+    }
+  }
+
+  function assertBlastTriggeredOncePerTransition() {
+    const savedCircuitType  = sim.circuitType;
+    const savedBatteryCount = sim.batteryCount;
+    const savedBulbCount    = sim.bulbCount;
+    const savedBulbWatt     = sim.bulbWatt;
+    const savedWasOverload  = sim.wasOverload;
+    const savedBlastActive  = sim.blastActive;
+    const savedBlastTime    = sim.blastTime;
+
+    const overloadSnap = computePhysicsSnapshot('seri', 4, 1, 5);
+    const nonOverloadSnap = computePhysicsSnapshot('seri', 1, 1, 10);
+
+    if (overloadSnap.bulbState !== 'overload') {
+      throw new Error('assertBlastTriggeredOncePerTransition: expected overload snap to be overload');
+    }
+    if (nonOverloadSnap.bulbState === 'overload') {
+      throw new Error('assertBlastTriggeredOncePerTransition: expected non-overload snap to not be overload');
+    }
+
+    let countA = 0;
+    const nowOverloadA = overloadSnap.bulbState === 'overload';
+    const wasOverloadA = false;
+    if (nowOverloadA && !wasOverloadA) {
+      countA += 1;
+    }
+    if (countA !== 1) {
+      throw new Error(
+        'assertBlastTriggeredOncePerTransition: scenario A must fire exactly once, got=' + countA
+      );
+    }
+
+    let countB = 0;
+    const nowOverloadB = overloadSnap.bulbState === 'overload';
+    const wasOverloadB = true;
+    if (nowOverloadB && !wasOverloadB) {
+      countB += 1;
+    }
+    if (countB !== 0) {
+      throw new Error(
+        'assertBlastTriggeredOncePerTransition: scenario B must not fire, got=' + countB
+      );
+    }
+
+    sim.circuitType  = savedCircuitType;
+    sim.batteryCount = savedBatteryCount;
+    sim.bulbCount    = savedBulbCount;
+    sim.bulbWatt     = savedBulbWatt;
+    sim.wasOverload  = savedWasOverload;
+    sim.blastActive  = savedBlastActive;
+    sim.blastTime    = savedBlastTime;
+  }
+
+  function assertCriticalScenarios() {
+    const EPS = 0.001;
+
+    const snap1 = computePhysicsSnapshot('seri', 1, 1, 10);
+    if (Math.abs(snap1.V_total - 1.5) > EPS) {
+      throw new Error('assertCriticalScenarios test1: V_total expected=1.5 got=' + snap1.V_total);
+    }
+    const expectedR1 = (V_BATTERY * V_BATTERY) / 10;
+    if (Math.abs(snap1.R_total - expectedR1) > EPS) {
+      throw new Error('assertCriticalScenarios test1: R_total expected=' + expectedR1 + ' got=' + snap1.R_total);
+    }
+    const expectedI1 = 1.5 / expectedR1;
+    if (Math.abs(snap1.I - expectedI1) > EPS) {
+      throw new Error('assertCriticalScenarios test1: I expected=' + expectedI1 + ' got=' + snap1.I);
+    }
+    if (Math.abs(snap1.P_actual - 10.0) > EPS) {
+      throw new Error('assertCriticalScenarios test1: P_actual expected=10.0 got=' + snap1.P_actual);
+    }
+    if (snap1.bulbState !== 'normal') {
+      throw new Error('assertCriticalScenarios test1: bulbState expected=normal got=' + snap1.bulbState);
+    }
+
+    const snap2 = computePhysicsSnapshot('seri', 4, 1, 5);
+    if (snap2.bulbState !== 'overload') {
+      throw new Error('assertCriticalScenarios test2: bulbState expected=overload got=' + snap2.bulbState);
+    }
+    if (snap2.I !== 0) {
+      throw new Error('assertCriticalScenarios test2: I must be 0 for overload, got=' + snap2.I);
+    }
+
+    const snap3 = computePhysicsSnapshot('paralel', 4, 4, 10);
+    if (Math.abs(snap3.V_total - 1.5) > EPS) {
+      throw new Error('assertCriticalScenarios test3: V_total expected=1.5 got=' + snap3.V_total);
+    }
+    if (Math.abs(snap3.P_actual - 10.0) > EPS) {
+      throw new Error('assertCriticalScenarios test3: P_actual expected=10.0 got=' + snap3.P_actual);
+    }
+    if (snap3.bulbState !== 'normal') {
+      throw new Error('assertCriticalScenarios test3: bulbState expected=normal got=' + snap3.bulbState);
+    }
+
+    const snap4 = computePhysicsSnapshot('seri', 1, 4, 25);
+    if (snap4.bulbState !== 'dim') {
+      throw new Error('assertCriticalScenarios test4: bulbState expected=dim got=' + snap4.bulbState);
+    }
+
+    const savedCircuitType5  = sim.circuitType;
+    const savedBatteryCount5 = sim.batteryCount;
+    const savedBulbCount5    = sim.bulbCount;
+    const savedBulbWatt5     = sim.bulbWatt;
+    const savedWasOverload5  = sim.wasOverload;
+    const savedBlastActive5  = sim.blastActive;
+    const savedBlastTime5    = sim.blastTime;
+
+    sim.wasOverload  = false;
+    sim.circuitType  = 'seri';
+    sim.batteryCount = 4;
+    sim.bulbCount    = 1;
+    sim.bulbWatt     = 5;
+    runPhysics();
+    if (sim.wasOverload !== true) {
+      throw new Error('assertCriticalScenarios test5: wasOverload must be true after overload transition');
+    }
+
+    sim.circuitType  = savedCircuitType5;
+    sim.batteryCount = savedBatteryCount5;
+    sim.bulbCount    = savedBulbCount5;
+    sim.bulbWatt     = savedBulbWatt5;
+    sim.wasOverload  = savedWasOverload5;
+    sim.blastActive  = savedBlastActive5;
+    sim.blastTime    = savedBlastTime5;
+
+    const savedCircuitType6  = sim.circuitType;
+    const savedBatteryCount6 = sim.batteryCount;
+    const savedBulbCount6    = sim.bulbCount;
+    const savedBulbWatt6     = sim.bulbWatt;
+    const savedWasOverload6  = sim.wasOverload;
+    const savedBlastActive6  = sim.blastActive;
+    const savedBlastTime6    = sim.blastTime;
+
+    sim.wasOverload  = true;
+    sim.blastActive  = true;
+    sim.circuitType  = 'seri';
+    sim.batteryCount = 1;
+    sim.bulbCount    = 1;
+    sim.bulbWatt     = 10;
+    runPhysics();
+    if (sim.blastActive !== false) {
+      throw new Error('assertCriticalScenarios test6: blastActive must be false after exiting overload');
+    }
+
+    sim.circuitType  = savedCircuitType6;
+    sim.batteryCount = savedBatteryCount6;
+    sim.bulbCount    = savedBulbCount6;
+    sim.bulbWatt     = savedBulbWatt6;
+    sim.wasOverload  = savedWasOverload6;
+    sim.blastActive  = savedBlastActive6;
+    sim.blastTime    = savedBlastTime6;
   }
 
   function runSelfTests() {
@@ -952,11 +1540,16 @@
     assertGeometry();
     assertParticleSystemMonomorphic();
     assertBulbStateClassification();
+    assertRenderLayerOrder();
 
     const batteryOptions = [1, 2, 3, 4];
     const bulbOptions    = [1, 2, 3, 4];
     const wattOptions    = [5, 10, 25];
     const typeOptions    = ['seri', 'paralel'];
+
+    for (const watt of wattOptions) {
+      assertRbulbPositive(watt);
+    }
 
     for (const batteries of batteryOptions) {
       for (const bulbs of bulbOptions) {
@@ -964,12 +1557,33 @@
           for (const type of typeOptions) {
             const result = computePhysicsSnapshot(type, batteries, bulbs, watt);
             if (type === 'seri') {
-              assertSeriesCircuitCalc(result);
+              assertSeriesCircuitLaw(result);
+            }
+            if (type === 'paralel') {
+              assertParallelCircuitLaw(result);
+            }
+            assertOhmLaw(result);
+            assertPowerLaw(result);
+            assertBulbStateExclusive(result);
+            assertOverloadBreaksCurrent(result);
+            assertDimAlphaRange(result);
+            if (result.I > 0) {
+              assertElectronSpeedProportional(result.I);
             }
           }
         }
       }
     }
+
+    assertElectronStillWhenZeroCurrent();
+
+    const currentSamples = [0.5, 1.0, 2.0, 5.0, 10.0];
+    for (const current of currentSamples) {
+      assertElectronSpeedProportional(current);
+    }
+
+    assertBlastTriggeredOncePerTransition();
+    assertCriticalScenarios();
 
     assertSimMonomorphic();
   }
