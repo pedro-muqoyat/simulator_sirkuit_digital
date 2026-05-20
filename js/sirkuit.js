@@ -259,7 +259,7 @@
     elResistance.textContent = `${sim.R_total.toFixed(2)} \u03A9`;
     elPower.textContent      = `${sim.P_actual.toFixed(2)} W`;
 
-    if (sim.circuitType === 'paralel' && sim.bulbCount > 1) {
+    if (sim.circuitType === 'paralel' && sim.bulbCount > 1 && sim.bulbState !== 'overload') {
       elLabelCurrent.textContent       = 'Arus Total (I)';
       elCurrent.textContent            = `${sim.I.toFixed(3)} A`;
       const iPerBulb                   = sim.bulbCount > 0 ? sim.I / sim.bulbCount : 0;
@@ -275,6 +275,7 @@
       elCurrentPeak.textContent  = `${sim.I_peak.toFixed(3)} A (rangkaian terbuka)`;
       elItemCurrentPeak.hidden   = false;
     } else {
+      sim.I_peak               = 0;
       elItemCurrentPeak.hidden = true;
     }
 
@@ -1784,6 +1785,7 @@
     if (!snapshot.blastActive) {
       blasts.length = 0;
     }
+    updateDisplay();
   }
 
   function runSelfTests() {
