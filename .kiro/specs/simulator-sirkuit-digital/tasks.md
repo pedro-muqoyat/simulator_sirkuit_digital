@@ -39,22 +39,22 @@ Urutan task: struktur HTML → CSS responsif → Physics Engine → Canvas Rende
   - Hapus semua karakter emoji dari teks HTML (judul, label, teks tombol, teks banner) — ganti dengan teks alfanumerik deskriptif
   - _Requirements: 1.1, 1.2, 1.3, 6.5, 8.3_
 
-- [-] 2. Verifikasi dan perbaiki CSS responsif (`css/style.css`)
-  - [ ] 2.1 Verifikasi CSS Grid layout dan breakpoint responsif
+- [x] 2. Verifikasi dan perbaiki CSS responsif (`css/style.css`)
+  - [x] 2.1 Verifikasi CSS Grid layout dan breakpoint responsif
     - Pastikan layout 1-kolom di `< 640px` (portrait mobile) tanpa horizontal scroll pada lebar 320px
     - Pastikan layout 2-kolom (`canvas+info / controls`) di `≥ 640px`
     - Pastikan layout landscape phone (`≤ 639px` + `orientation: landscape`) menggunakan 2-kolom
     - Pastikan tidak ada `style.*` yang diinjeksi dari JavaScript ke dalam elemen layout
     - _Requirements: 8.1, 8.2_
 
-  - [ ] 2.2 Verifikasi touch target dan tipografi
+  - [x] 2.2 Verifikasi touch target dan tipografi
     - Pastikan slider thumb memiliki ukuran ≥ 32×32px dengan padding vertikal sehingga total touch area ≥ 44px
     - Pastikan setiap `.radio-label` memiliki `min-height: 44px`
     - Pastikan `#btnReset` memiliki `min-height: 48px`
     - Pastikan font size teks konten minimal `0.875rem` (14px) dan label kontrol minimal `1rem` (16px)
     - _Requirements: 8.3, 8.5_
 
-  - [ ] 2.3 Verifikasi GPU acceleration canvas
+  - [x] 2.3 Verifikasi GPU acceleration canvas
     - Pastikan `#circuitCanvas` memiliki `will-change: transform` dan `transform: translateZ(0)` di CSS
     - Pastikan tidak ada modifikasi `style.*` pada elemen canvas di dalam animation loop
     - _Requirements: 3.3, 3.6_

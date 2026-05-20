@@ -1,53 +1,29 @@
-/**
- * ============================================================
- * Simulator Sirkuit Digital — sirkuit.js
- * Pure Vanilla JavaScript (ES6+) · No frameworks · No libraries
- *
- * Architecture:
- *   - Physics Engine  : Ohm's Law (I = V/R), Power Law (P = V²/R)
- *   - Canvas Renderer : HTML5 Canvas 2D API
- *   - Animation Loop  : window.requestAnimationFrame() @ 60 FPS
- *   - Particle System : Electron flow + Blast particles on overload
- * ============================================================
- */
-
 (function () {
   'use strict';
 
-  // ─────────────────────────────────────────────
-  // CONSTANTS
-  // ─────────────────────────────────────────────
-  const V_BATTERY          = 1.5;   // Volts per battery unit
-  const OVERLOAD_FACTOR    = 1.3;   // P_actual > P_nominal × 1.3 → overload
-  const ELECTRON_COUNT     = 22;    // Normal electron particles
-  const BLAST_COUNT        = 15;    // Blast particles on overload
-  const BLAST_DURATION_MS  = 1800;  // How long blast animation plays (ms)
-  const BASE_SPEED         = 0.004; // Base electron travel speed (fraction of path per frame)
+  const V_BATTERY          = 1.5;
+  const OVERLOAD_FACTOR    = 1.3;
+  const ELECTRON_COUNT     = 22;
+  const BLAST_COUNT        = 15;
+  const BLAST_DURATION_MS  = 1800;
+  const BASE_SPEED         = 0.004;
 
-  // ─────────────────────────────────────────────
-  // SIMULATION STATE  (monomorphic — never add/remove keys at runtime)
-  // ─────────────────────────────────────────────
   const sim = {
     circuitType  : 'seri',
     batteryCount : 1,
     bulbCount    : 1,
     bulbWatt     : 10,
-    // Computed by physics engine
     V_total      : 0,
     R_total      : 0,
     I            : 0,
     P_actual     : 0,
-    bulbState    : 'normal',   // 'dim' | 'normal' | 'overload'
-    dimAlpha     : 1.0,        // 0.0–1.0 brightness for dim state
-    // Overload tracking
+    bulbState    : 'normal',
+    dimAlpha     : 1.0,
     wasOverload  : false,
-    blastTime    : 0,          // timestamp when blast started
+    blastTime    : 0,
     blastActive  : false,
   };
 
-  // ─────────────────────────────────────────────
-  // DOM REFERENCES
-  // ─────────────────────────────────────────────
   const canvas          = document.getElementById('circuitCanvas');
   const ctx             = canvas.getContext('2d', { alpha: false });
   const overloadBanner  = document.getElementById('overloadBanner');
@@ -66,11 +42,8 @@
   const radiosBulbWatt     = document.querySelectorAll('input[name="bulbWatt"]');
   const btnReset           = document.getElementById('btnReset');
 
-  // ─────────────────────────────────────────────
-  // CANVAS SIZING
-  // ─────────────────────────────────────────────
-  let cw = 0; // logical canvas width
-  let ch = 0; // logical canvas height
+  let cw = 0;
+  let ch = 0;
   let dpr = 1;
 
   function resizeCanvas() {
@@ -83,9 +56,6 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  // ─────────────────────────────────────────────
-  // CIRCUIT GEOMETRY  (computed from canvas size)
-  // ─────────────────────────────────────────────
   function getGeometry() {
     const cx = cw / 2;
     const cy = ch / 2;
@@ -95,8 +65,6 @@
     const top    = pad;
     const bottom = ch - pad;
 
-    // Rectangular wire path: top-left → top-right → bottom-right → bottom-left → top-left
-    // Batteries sit on the top wire, bulbs on the bottom wire
     const wirePath = [
       { x: left,  y: top    },
       { x: right, y: top    },
@@ -105,7 +73,6 @@
       { x: left,  y: top    },
     ];
 
-    // Expand path into dense point array for smooth particle travel
     const densePath = [];
     const STEPS_PER_SEGMENT = 40;
     for (let s = 0; s < wirePath.length - 1; s++) {
@@ -119,7 +86,7 @@
         });
       }
     }
-    densePath.push({ x: left, y: top }); // close loop
+    densePath.push({ x: left, y: top });
 
     return {
       cx, cy,
@@ -131,16 +98,11 @@
     };
   }
 
-  // ─────────────────────────────────────────────
-  // PARTICLE SYSTEM
-  // ─────────────────────────────────────────────
-
-  // Electron particles — monomorphic objects
   const electrons = [];
 
   function createElectron(densePath) {
     return {
-      progress : Math.random(),   // 0.0–1.0 position along path
+      progress : Math.random(),
       size     : 4,
       r        : 79,
       g        : 195,
@@ -178,7 +140,6 @@
     ctx.shadowBlur = 0;
   }
 
-  // Blast particles — monomorphic objects
   const blasts = [];
 
   function spawnBlast(x, y) {
@@ -203,7 +164,7 @@
     for (let i = 0; i < blasts.length; i++) {
       blasts[i].x  += blasts[i].vx;
       blasts[i].y  += blasts[i].vy;
-      blasts[i].vy += 0.18; // gravity
+      blasts[i].vy += 0.18;
       blasts[i].life -= blasts[i].decay;
     }
   }
@@ -220,13 +181,9 @@
     ctx.globalAlpha = 1.0;
   }
 
-  // ─────────────────────────────────────────────
-  // PHYSICS ENGINE
-  // ─────────────────────────────────────────────
   function runPhysics() {
     const { circuitType, batteryCount, bulbCount, bulbWatt } = sim;
 
-    // R per bulb: R = V_nominal² / P_nominal
     const R_bulb = (V_BATTERY * V_BATTERY) / bulbWatt;
 
     let V_total = 0;
@@ -238,19 +195,15 @@
       R_total    = bulbCount * R_bulb;
       V_per_bulb = R_total > 0 ? V_total / bulbCount : 0;
     } else {
-      // Parallel: each branch sees one battery's voltage
       V_total    = V_BATTERY;
       R_total    = R_bulb / bulbCount;
       V_per_bulb = V_BATTERY;
     }
 
-    // I = V / R
     let I = R_total > 0 ? V_total / R_total : 0;
 
-    // P_actual per bulb = V_per_bulb² / R_bulb
     const P_actual = R_bulb > 0 ? (V_per_bulb * V_per_bulb) / R_bulb : 0;
 
-    // Determine bulb state
     let bulbState = 'normal';
     let dimAlpha  = 1.0;
 
@@ -266,12 +219,11 @@
     } else {
       bulbState = 'overload';
       dimAlpha  = 1.0;
-      I = 0; // circuit breaks
+      I = 0;
     }
 
     const nowOverload = bulbState === 'overload';
 
-    // Trigger blast only on transition into overload
     if (nowOverload && !sim.wasOverload) {
       const geo = getGeometry();
       spawnBlast(geo.cx, geo.bulbY);
@@ -292,31 +244,24 @@
     sim.wasOverload = nowOverload;
   }
 
-  // ─────────────────────────────────────────────
-  // UI DISPLAY UPDATE
-  // ─────────────────────────────────────────────
   function updateDisplay() {
     elVoltage.textContent    = `${sim.V_total.toFixed(2)} V`;
-    elResistance.textContent = `${sim.R_total.toFixed(2)} Ω`;
+    elResistance.textContent = `${sim.R_total.toFixed(2)} \u03A9`;
     elCurrent.textContent    = `${sim.I.toFixed(3)} A`;
     elPower.textContent      = `${sim.P_actual.toFixed(2)} W`;
 
     elStatus.className = 'info-value info-value--status';
     if (sim.bulbState === 'dim') {
-      elStatus.textContent = '🔅 Redup';
+      elStatus.textContent = 'Redup';
       elStatus.classList.add('status-dim');
     } else if (sim.bulbState === 'normal') {
-      elStatus.textContent = '✅ Normal';
+      elStatus.textContent = 'Normal';
       elStatus.classList.add('status-normal');
     } else {
-      elStatus.textContent = '💥 OVERLOAD!';
+      elStatus.textContent = 'OVERLOAD!';
       elStatus.classList.add('status-overload');
     }
   }
-
-  // ─────────────────────────────────────────────
-  // CANVAS RENDERER
-  // ─────────────────────────────────────────────
 
   function drawBackground() {
     ctx.fillStyle = '#0d1b2a';
@@ -336,7 +281,6 @@
     }
     ctx.stroke();
 
-    // Active wire glow when current flows
     if (sim.I > 0) {
       ctx.strokeStyle = 'rgba(79, 195, 247, 0.35)';
       ctx.lineWidth   = 10;
@@ -350,10 +294,10 @@
   }
 
   function drawBatteries(geo) {
-    const { left, right, batteryY, cx } = geo;
+    const { batteryY, cx } = geo;
     const count  = sim.batteryCount;
-    const bw     = 36; // battery width
-    const bh     = 18; // battery height
+    const bw     = 36;
+    const bh     = 18;
     const gap    = 10;
     const totalW = count * bw + (count - 1) * gap;
     const startX = cx - totalW / 2;
@@ -362,7 +306,6 @@
       const bx = startX + i * (bw + gap);
       const by = batteryY - bh / 2;
 
-      // Battery body
       ctx.fillStyle   = '#69f0ae';
       ctx.strokeStyle = '#0d1b2a';
       ctx.lineWidth   = 2;
@@ -371,11 +314,9 @@
       ctx.fill();
       ctx.stroke();
 
-      // Positive terminal
       ctx.fillStyle = '#0d1b2a';
       ctx.fillRect(bx + bw - 4, by + bh * 0.25, 4, bh * 0.5);
 
-      // Label
       ctx.fillStyle    = '#0d1b2a';
       ctx.font         = 'bold 11px sans-serif';
       ctx.textAlign    = 'center';
@@ -383,12 +324,11 @@
       ctx.fillText('+', bx + bw / 2, by + bh / 2);
     }
 
-    // Label above batteries
     ctx.fillStyle    = '#90b4ce';
     ctx.font         = '12px sans-serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(`🔋 ×${count}  (${(count * V_BATTERY).toFixed(1)} V)`, cx, batteryY - bh / 2 - 6);
+    ctx.fillText(`Baterai x${count}  (${(count * V_BATTERY).toFixed(1)} V)`, cx, batteryY - bh / 2 - 6);
   }
 
   function drawBulbs(geo) {
@@ -410,16 +350,14 @@
       }
     }
 
-    // Label below bulbs
     ctx.fillStyle    = '#90b4ce';
     ctx.font         = '12px sans-serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(`💡 ×${count}  (${sim.bulbWatt}W nominal)`, cx, bulbY + radius + 8);
+    ctx.fillText(`Lampu x${count}  (${sim.bulbWatt}W nominal)`, cx, bulbY + radius + 8);
   }
 
   function drawNormalBulb(x, y, radius, alpha) {
-    // Glow halo
     if (alpha > 0.3) {
       const glowRadius = radius * 2.5;
       const grad = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
@@ -432,7 +370,6 @@
       ctx.fill();
     }
 
-    // Bulb body
     ctx.globalAlpha = alpha;
     ctx.fillStyle   = '#f7c948';
     ctx.strokeStyle = '#1b2d45';
@@ -442,7 +379,6 @@
     ctx.fill();
     ctx.stroke();
 
-    // Filament lines
     ctx.strokeStyle = '#1b2d45';
     ctx.lineWidth   = 2;
     ctx.beginPath();
@@ -455,7 +391,6 @@
   }
 
   function drawBrokenBulb(x, y, radius) {
-    // Dark cracked bulb
     ctx.fillStyle   = '#3a1a1a';
     ctx.strokeStyle = '#ff5252';
     ctx.lineWidth   = 2.5;
@@ -464,7 +399,6 @@
     ctx.fill();
     ctx.stroke();
 
-    // Crack lines
     ctx.strokeStyle = '#ff5252';
     ctx.lineWidth   = 2;
     ctx.beginPath();
@@ -474,7 +408,6 @@
     ctx.lineTo(x - 8, y + 8);
     ctx.stroke();
 
-    // Small sparks around broken bulb
     ctx.fillStyle = '#ff5252';
     const sparkPositions = [
       { dx: -radius - 4, dy: -4 },
@@ -501,9 +434,6 @@
     ctx.fillText(label, cx, cy);
   }
 
-  // ─────────────────────────────────────────────
-  // MAIN RENDER FUNCTION
-  // ─────────────────────────────────────────────
   function render(timestamp) {
     const geo = getGeometry();
 
@@ -513,14 +443,12 @@
     drawBulbs(geo);
     drawPhysicsLabels(geo);
 
-    // Electron particles (only when current flows)
     if (sim.I > 0) {
-      const speedFactor = Math.min(sim.I * 8, 6); // cap speed
+      const speedFactor = Math.min(sim.I * 8, 6);
       updateElectrons(geo.densePath, speedFactor);
       drawElectrons(geo.densePath);
     }
 
-    // Blast particles (overload animation)
     if (sim.blastActive) {
       const elapsed = Date.now() - sim.blastTime;
       if (elapsed < BLAST_DURATION_MS) {
@@ -532,9 +460,6 @@
     }
   }
 
-  // ─────────────────────────────────────────────
-  // ANIMATION LOOP  (requestAnimationFrame only)
-  // ─────────────────────────────────────────────
   let rafId = null;
 
   function loop(timestamp) {
@@ -542,9 +467,6 @@
     rafId = requestAnimationFrame(loop);
   }
 
-  // ─────────────────────────────────────────────
-  // EVENT HANDLERS
-  // ─────────────────────────────────────────────
   function onCircuitTypeChange(e) {
     sim.circuitType = e.target.value;
     runPhysics();
@@ -604,16 +526,12 @@
     initElectrons(getGeometry().densePath);
   }
 
-  // ─────────────────────────────────────────────
-  // INITIALISATION
-  // ─────────────────────────────────────────────
   function init() {
     resizeCanvas();
     initElectrons(getGeometry().densePath);
     runPhysics();
     updateDisplay();
 
-    // Bind controls
     radiosCircuitType.forEach(r => r.addEventListener('change', onCircuitTypeChange));
     radiosBulbWatt.forEach(r => r.addEventListener('change', onBulbWattChange));
     sliderBattery.addEventListener('input', onBatterySlider);
@@ -621,11 +539,9 @@
     btnReset.addEventListener('click', onReset);
     window.addEventListener('resize', onResize);
 
-    // Kick off animation loop
     rafId = requestAnimationFrame(loop);
   }
 
-  // Boot when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
