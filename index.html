@@ -4,28 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Simulator Sirkuit Digital — Belajar Hukum Ohm dan Rangkaian Listrik untuk Siswa SD" />
-  <title>⚡ Simulator Sirkuit Digital</title>
+  <title>Simulator Sirkuit Digital</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <header class="app-header">
-    <h1 class="app-title">⚡ Simulator Sirkuit Digital</h1>
+    <h1 class="app-title">Simulator Sirkuit Digital</h1>
     <p class="app-subtitle">Belajar Listrik Seru &amp; Aman!</p>
   </header>
 
   <main class="app-main">
 
-    <!-- Canvas Area -->
     <section class="canvas-section" aria-label="Visualisasi Sirkuit">
       <canvas id="circuitCanvas" role="img" aria-label="Animasi rangkaian listrik dengan elektron bergerak"></canvas>
       <div id="overloadBanner" class="overload-banner" aria-live="assertive" aria-atomic="true" hidden>
-        ⚡ OVERLOAD! Lampu Putus!
+        OVERLOAD! Lampu Putus!
       </div>
     </section>
 
-    <!-- Physics Info Panel -->
     <section class="info-panel" aria-label="Hasil Perhitungan Fisika">
-      <h2 class="info-panel__title">📊 Hasil Perhitungan</h2>
+      <h2 class="info-panel__title">Hasil Perhitungan</h2>
       <ul class="info-list">
         <li class="info-item">
           <span class="info-label">Tegangan Total (V)</span>
@@ -50,31 +48,28 @@
       </ul>
     </section>
 
-    <!-- Control Panel -->
     <section class="control-panel" aria-label="Panel Kontrol Sirkuit">
-      <h2 class="control-panel__title">🎛️ Atur Sirkuit</h2>
+      <h2 class="control-panel__title">Atur Sirkuit</h2>
 
-      <!-- Circuit Type -->
       <fieldset class="control-group">
         <legend class="control-group__legend">Jenis Rangkaian</legend>
         <div class="radio-group">
           <label class="radio-label" for="typeSeri">
             <input class="radio-input" type="radio" id="typeSeri" name="circuitType" value="seri" checked />
             <span class="radio-custom"></span>
-            🔗 Seri
+            Seri
           </label>
           <label class="radio-label" for="typeParalel">
             <input class="radio-input" type="radio" id="typeParalel" name="circuitType" value="paralel" />
             <span class="radio-custom"></span>
-            ⚡ Paralel
+            Paralel
           </label>
         </div>
       </fieldset>
 
-      <!-- Battery Count -->
       <div class="control-group">
         <label class="slider-label" for="batteryCount">
-          🔋 Jumlah Baterai: <strong id="batteryCountDisplay">1</strong>
+          Jumlah Baterai: <strong id="batteryCountDisplay">1</strong>
         </label>
         <input
           class="slider-input"
@@ -95,10 +90,9 @@
         </div>
       </div>
 
-      <!-- Bulb Count -->
       <div class="control-group">
         <label class="slider-label" for="bulbCount">
-          💡 Jumlah Lampu: <strong id="bulbCountDisplay">1</strong>
+          Jumlah Lampu: <strong id="bulbCountDisplay">1</strong>
         </label>
         <input
           class="slider-input"
@@ -119,9 +113,8 @@
         </div>
       </div>
 
-      <!-- Bulb Nominal Wattage -->
       <fieldset class="control-group">
-        <legend class="control-group__legend">💡 Daya Nominal Lampu</legend>
+        <legend class="control-group__legend">Daya Nominal Lampu</legend>
         <div class="radio-group">
           <label class="radio-label" for="watt5">
             <input class="radio-input" type="radio" id="watt5" name="bulbWatt" value="5" />
@@ -141,9 +134,8 @@
         </div>
       </fieldset>
 
-      <!-- Reset Button -->
       <button class="btn-reset" id="btnReset" type="button" aria-label="Reset simulasi ke kondisi awal">
-        🔄 Reset Simulasi
+        Reset Simulasi
       </button>
     </section>
 

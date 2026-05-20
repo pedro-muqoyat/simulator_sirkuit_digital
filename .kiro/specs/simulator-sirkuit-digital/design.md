@@ -12,6 +12,26 @@ Seluruh kode berjalan dalam satu IIFE di `js/sirkuit.js` tanpa dependensi ekster
 
 ---
 
+## Aturan Utama Mutlak (Wajib Dipatuhi Tanpa Pengecualian)
+
+Aturan-aturan berikut berlaku untuk **seluruh file kode sumber** (`index.html`, `css/style.css`, `js/sirkuit.js`) dan tidak dapat dikompromikan:
+
+1. **Zero-Comment Policy:** SELURUH file kode sumber DILARANG KERAS memuat komentar dalam bentuk apapun — termasuk `//`, `/* */`, dan komentar HTML `<!-- -->`. Kode wajib menerapkan **Self-Documenting Code** secara mutlak: nama variabel, fungsi, konstanta, dan elemen HTML harus cukup deskriptif sehingga tidak memerlukan penjelasan tambahan dalam bentuk komentar.
+
+2. **Zero-Emoji Policy:** DILARANG KERAS menyisipkan karakter emoji, emoticon, atau simbol Unicode non-alfanumerik grafis (seperti `🔋`, `💡`, `⚡`, `🔅`, `✅`, `💥`, `🎛️`, `🔗`, `📊`, `🔄`) di seluruh file kode sumber (`index.html`, `style.css`, `js/sirkuit.js`). Larangan ini berlaku mutlak untuk teks string HTML, nilai teks Canvas `fillText()`, label UI, nama variabel, nama fungsi, ID elemen, maupun log konsol. Sebagai pengganti, gunakan manipulasi warna CSS/Canvas murni: kilatan warna kuning cerah untuk lampu menyala, partikel lingkaran merah untuk kondisi overload.
+
+3. **Monomorphic State Object:** Objek state `sim` WAJIB dikunci sejak deklarasi awal dengan seluruh properti yang dibutuhkan seumur hidup aplikasi. Dilarang keras menambah, menghapus, atau mengubah shape objek `sim` di runtime. Setiap properti harus diinisialisasi dengan tipe data final yang benar sejak baris pertama deklarasi (string tetap string, number tetap number, boolean tetap boolean).
+
+4. **No External Dependencies:** Dilarang menggunakan framework, library, CDN eksternal, atau NPM packages dalam bentuk apapun.
+
+5. **RAF-Only Animation:** Dilarang menggunakan `setInterval()` atau `setTimeout()` untuk kalkulasi loop animasi fisika. Wajib menggunakan `window.requestAnimationFrame()`.
+
+6. **No Inline Style Mutation:** Dilarang memodifikasi properti geometri layout DOM (`style.left`, `style.width`, `style.top`, dll.) di dalam loop animasi. GPU acceleration canvas wajib diterapkan via CSS (`will-change: transform`, `transform: translateZ(0)`), bukan via JavaScript.
+
+7. **Canvas-Only Rendering:** Seluruh visualisasi sirkuit, partikel, dan animasi wajib digambar eksklusif menggunakan HTML5 Canvas 2D API. Dilarang menggunakan animasi CSS atau manipulasi DOM untuk efek visual.
+
+---
+
 ## Architecture
 
 ### File Structure
@@ -69,21 +89,16 @@ Objek `sim` adalah struktur monomorphic — semua key didefinisikan saat deklara
 
 ```javascript
 const sim = {
-  // Input dari Control Panel
-  circuitType  : 'seri',    // 'seri' | 'paralel'
-  batteryCount : 1,         // 1–4
-  bulbCount    : 1,         // 1–4
-  bulbWatt     : 10,        // 5 | 10 | 25
-
-  // Output dari Physics Engine
-  V_total   : 0,
-  R_total   : 0,
-  I         : 0,
-  P_actual  : 0,
-  bulbState : 'normal',    // 'dim' | 'normal' | 'overload'
-  dimAlpha  : 1.0,
-
-  // State tracking overload
+  circuitType  : 'seri',
+  batteryCount : 1,
+  bulbCount    : 1,
+  bulbWatt     : 10,
+  V_total      : 0,
+  R_total      : 0,
+  I            : 0,
+  P_actual     : 0,
+  bulbState    : 'normal',
+  dimAlpha     : 1.0,
   wasOverload  : false,
   blastTime    : 0,
   blastActive  : false,
@@ -161,37 +176,28 @@ Canvas element menggunakan `will-change: transform` dan `transform: translateZ(0
 **Elektron normal:**
 
 ```javascript
-// Struktur monomorphic per partikel
 { progress, size, r, g, b }
 
-// progress: 0.0–1.0, posisi sepanjang densePath
-// Update per frame:
 progress += BASE_SPEED × speedFactor
-speedFactor = min(I × 8, 6)   ← proporsional terhadap arus, dibatasi max 6
+speedFactor = min(I × 8, 6)
 ```
 
 **Partikel ledakan (blast):**
 
 ```javascript
-// Struktur monomorphic per partikel
 { x, y, vx, vy, size, life, decay, hue }
 
-// Spawn: 15 partikel dari posisi bulbY tengah canvas
-// Update per frame:
 x += vx; y += vy
-vy += 0.18   ← gravitasi
+vy += 0.18
 life -= decay
-
-// Render: globalAlpha = life (fade out seiring waktu)
-// Durasi: BLAST_DURATION_MS = 1800ms, setelah itu blastActive = false
 ```
 
 ### 5. Animation Loop
 
 ```javascript
 function loop(timestamp) {
-  render(timestamp);                  // draw semua layer
-  rafId = requestAnimationFrame(loop); // jadwalkan frame berikutnya
+  render(timestamp);
+  rafId = requestAnimationFrame(loop);
 }
 ```
 
@@ -331,11 +337,6 @@ Palet dipilih untuk kontras tinggi di atas background gelap, sesuai untuk anak u
 
 ```javascript
 runPhysics() → void
-// Membaca: sim.circuitType, sim.batteryCount, sim.bulbCount, sim.bulbWatt
-// Menulis: sim.V_total, sim.R_total, sim.I, sim.P_actual,
-//          sim.bulbState, sim.dimAlpha, sim.wasOverload,
-//          sim.blastActive, sim.blastTime
-// Side-effect: memanggil spawnBlast() dan toggle overloadBanner.hidden
 ```
 
 **Antarmuka dengan modul lain:**
@@ -351,19 +352,10 @@ runPhysics() → void
 
 ```javascript
 getGeometry() → { cx, cy, left, right, top, bottom, wirePath, densePath, batteryY, bulbY }
-// Menghitung koordinat layout dari cw, ch saat ini
-// Tidak ada side-effect, pure computation
 
 render(timestamp) → void
-// Menggambar satu frame lengkap ke canvas
-// Membaca: sim.*, electrons[], blasts[]
-// Memanggil: getGeometry(), drawBackground(), drawWires(),
-//            drawBatteries(), drawBulbs(), drawPhysicsLabels(),
-//            updateElectrons(), drawElectrons(), updateBlasts(), drawBlasts()
 
 resizeCanvas() → void
-// Menyesuaikan canvas.width/height dengan devicePixelRatio
-// Memanggil ctx.setTransform() untuk DPI scaling
 ```
 
 **Antarmuka dengan modul lain:**
@@ -379,24 +371,16 @@ resizeCanvas() → void
 
 ```javascript
 initElectrons(densePath) → void
-// Mengisi electrons[] dengan ELECTRON_COUNT partikel baru
-// Posisi awal acak (progress: 0.0–1.0)
 
 updateElectrons(densePath, speedFactor) → void
-// Memajukan progress setiap elektron
-// speedFactor = min(sim.I × 8, 6)
 
 drawElectrons(densePath) → void
-// Menggambar setiap elektron sebagai lingkaran biru di posisi densePath[idx]
 
 spawnBlast(x, y) → void
-// Mengisi blasts[] dengan BLAST_COUNT partikel ledakan dari titik (x, y)
 
 updateBlasts() → void
-// Memperbarui posisi, kecepatan, dan life setiap blast particle
 
 drawBlasts() → void
-// Menggambar blast particles dengan globalAlpha = life
 ```
 
 **Antarmuka dengan modul lain:**
@@ -412,8 +396,6 @@ drawBlasts() → void
 
 ```javascript
 loop(timestamp) → void
-// Memanggil render(timestamp) lalu requestAnimationFrame(loop)
-// Menyimpan rafId untuk referensi (tidak digunakan untuk cancel saat ini)
 ```
 
 **Antarmuka dengan modul lain:**
@@ -427,12 +409,12 @@ loop(timestamp) → void
 **Fungsi publik:**
 
 ```javascript
-onCircuitTypeChange(e) → void   // update sim.circuitType
-onBatterySlider(e)    → void   // update sim.batteryCount + label
-onBulbSlider(e)       → void   // update sim.bulbCount + label
-onBulbWattChange(e)   → void   // update sim.bulbWatt
-onReset()             → void   // reset semua sim.* ke default
-onResize()            → void   // resizeCanvas() + initElectrons()
+onCircuitTypeChange(e) → void
+onBatterySlider(e)    → void
+onBulbSlider(e)       → void
+onBulbWattChange(e)   → void
+onReset()             → void
+onResize()            → void
 ```
 
 **Pola umum setiap handler:**
@@ -453,9 +435,6 @@ update sim.* → runPhysics() → updateDisplay()
 
 ```javascript
 updateDisplay() → void
-// Menulis ke: #displayVoltage, #displayResistance, #displayCurrent,
-//             #displayPower, #displayStatus (teks + CSS class)
-// Membaca: sim.V_total, sim.R_total, sim.I, sim.P_actual, sim.bulbState
 ```
 
 **Antarmuka dengan modul lain:**
@@ -468,27 +447,22 @@ updateDisplay() → void
 
 ### SimState (Objek `sim`)
 
-Satu-satunya sumber kebenaran aplikasi. Monomorphic — shape tidak berubah setelah inisialisasi.
+Satu-satunya sumber kebenaran aplikasi. Monomorphic kaku — shape dikunci sejak deklarasi awal dan tidak berubah seumur hidup aplikasi. Setiap properti diinisialisasi dengan tipe data final yang benar: string tetap string, number tetap number, boolean tetap boolean.
 
 ```typescript
 interface SimState {
-  // === INPUT (ditulis oleh Control Panel) ===
   circuitType  : 'seri' | 'paralel';
   batteryCount : 1 | 2 | 3 | 4;
   bulbCount    : 1 | 2 | 3 | 4;
   bulbWatt     : 5 | 10 | 25;
-
-  // === OUTPUT (ditulis oleh Physics Engine) ===
-  V_total   : number;   // Volt, ≥ 0
-  R_total   : number;   // Ohm, > 0
-  I         : number;   // Ampere, ≥ 0 (0 saat overload)
-  P_actual  : number;   // Watt, ≥ 0
-  bulbState : 'dim' | 'normal' | 'overload';
-  dimAlpha  : number;   // 0.25–1.0
-
-  // === OVERLOAD TRACKING ===
+  V_total      : number;
+  R_total      : number;
+  I            : number;
+  P_actual     : number;
+  bulbState    : 'dim' | 'normal' | 'overload';
+  dimAlpha     : number;
   wasOverload  : boolean;
-  blastTime    : number;   // timestamp ms (Date.now())
+  blastTime    : number;
   blastActive  : boolean;
 }
 ```
@@ -519,11 +493,11 @@ Array `electrons[]` berisi objek monomorphic:
 
 ```typescript
 interface ElectronParticle {
-  progress : number;   // 0.0–1.0, posisi sepanjang densePath
-  size     : number;   // radius piksel (tetap = 4)
-  r        : number;   // komponen warna merah (tetap = 79)
-  g        : number;   // komponen warna hijau (tetap = 195)
-  b        : number;   // komponen warna biru (tetap = 247)
+  progress : number;
+  size     : number;
+  r        : number;
+  g        : number;
+  b        : number;
 }
 ```
 
@@ -537,14 +511,14 @@ Array `blasts[]` berisi objek monomorphic:
 
 ```typescript
 interface BlastParticle {
-  x     : number;   // posisi X saat ini (piksel)
-  y     : number;   // posisi Y saat ini (piksel)
-  vx    : number;   // kecepatan horizontal (piksel/frame)
-  vy    : number;   // kecepatan vertikal (piksel/frame)
-  size  : number;   // radius (3–7 piksel)
-  life  : number;   // 0.0–1.0, berkurang setiap frame
-  decay : number;   // laju pengurangan life per frame
-  hue   : number;   // 0–60 (merah-oranye-kuning, HSL)
+  x     : number;
+  y     : number;
+  vx    : number;
+  vy    : number;
+  size  : number;
+  life  : number;
+  decay : number;
+  hue   : number;
 }
 ```
 
@@ -558,16 +532,16 @@ Nilai kembalian `getGeometry()`, dihitung ulang setiap frame:
 
 ```typescript
 interface GeometryResult {
-  cx       : number;   // pusat X canvas
-  cy       : number;   // pusat Y canvas
-  left     : number;   // batas kiri wire (= padding)
-  right    : number;   // batas kanan wire (= cw - padding)
-  top      : number;   // batas atas wire (= padding)
-  bottom   : number;   // batas bawah wire (= ch - padding)
-  wirePath : Array<{x: number, y: number}>;   // 5 titik sudut
-  densePath: Array<{x: number, y: number}>;   // ~200 titik interpolasi
-  batteryY : number;   // = top
-  bulbY    : number;   // = bottom
+  cx        : number;
+  cy        : number;
+  left      : number;
+  right     : number;
+  top       : number;
+  bottom    : number;
+  wirePath  : Array<{x: number, y: number}>;
+  densePath : Array<{x: number, y: number}>;
+  batteryY  : number;
+  bulbY     : number;
 }
 ```
 
@@ -729,19 +703,20 @@ if (!ctx) {
 }
 ```
 
+**Kondisi:** Error tak terduga saat menggambar visual broken bulb (misalnya state canvas korup).
+
 ---
 
 ### E2 — `drawBrokenBulb` Gagal Render
 
 **Kondisi:** Error tak terduga saat menggambar visual broken bulb (misalnya state canvas korup).
 
-**Penanganan (sesuai R5.3):** Jika `drawBrokenBulb()` melempar error, Canvas_Renderer harus menampilkan fallback indikator error state. Implementasi dengan try-catch:
+**Penanganan (sesuai R5.3):** Jika `drawBrokenBulb()` melempar error, Canvas_Renderer menampilkan fallback indikator error state via try-catch:
 
 ```javascript
 try {
   drawBrokenBulb(bx, by, radius);
-} catch (e) {
-  // Fallback: kotak merah sederhana
+} catch (renderError) {
   ctx.fillStyle = '#ff5252';
   ctx.fillRect(bx - radius, by - radius, radius * 2, radius * 2);
 }
@@ -783,56 +758,42 @@ if (isNaN(val) || val < 1 || val > 4) return;
 ### Pendekatan Umum
 
 Karena proyek ini adalah pure vanilla JS tanpa build system, strategi testing menggunakan:
-1. **Property-Based Testing (PBT)** untuk Physics Engine — verifikasi invariant matematika
-2. **Unit Testing manual** untuk fungsi-fungsi murni (pure functions)
+1. **Property-Based Testing (PBT)** untuk Physics Engine — verifikasi invariant matematika, dipendam langsung di dalam `js/sirkuit.js` sebagai fungsi `runSelfTests()` yang dipanggil saat `init()`
+2. **Unit Testing** untuk fungsi-fungsi murni (pure functions), juga dipendam di `js/sirkuit.js`
 3. **Visual regression testing** manual di browser untuk Canvas Renderer
 4. **Responsive testing** di DevTools untuk breakpoint mobile
+
+Seluruh kode pengujian ditulis tanpa komentar dan mengikuti Zero-Comment Policy yang sama dengan kode produksi.
 
 ---
 
 ### Property-Based Tests (Physics Engine)
 
-Menggunakan framework PBT ringan (misalnya `fast-check` via CDN di file test terpisah, atau implementasi generator sederhana):
-
-**Test Suite: `physics.test.js`**
+Diimplementasikan sebagai fungsi `runSelfTests()` di dalam `js/sirkuit.js` menggunakan generator sederhana tanpa library eksternal:
 
 ```javascript
-// Property P1: I = V / R (saat tidak overload)
-property('ohm_law_consistency', () => {
-  forAll(
-    integer(1, 4),   // batteryCount
-    integer(1, 4),   // bulbCount
-    oneOf(5, 10, 25), // bulbWatt
-    oneOf('seri', 'paralel'), // circuitType
-    (batteries, bulbs, watt, type) => {
-      const result = computePhysics(type, batteries, bulbs, watt);
-      if (result.bulbState !== 'overload' && result.R_total > 0) {
-        return Math.abs(result.I - result.V_total / result.R_total) < 0.0001;
+function runSelfTests() {
+  const batteryOptions  = [1, 2, 3, 4];
+  const bulbOptions     = [1, 2, 3, 4];
+  const wattOptions     = [5, 10, 25];
+  const typeOptions     = ['seri', 'paralel'];
+
+  for (const batteries of batteryOptions) {
+    for (const bulbs of bulbOptions) {
+      for (const watt of wattOptions) {
+        for (const type of typeOptions) {
+          const result = computePhysicsSnapshot(type, batteries, bulbs, watt);
+          assertOhmLaw(result);
+          assertPowerLaw(result);
+          assertBulbStateExclusive(result);
+          assertOverloadBreaksCurrent(result);
+          assertDimAlphaRange(result);
+          assertRbulbPositive(watt);
+        }
       }
-      return true;
     }
-  );
-});
-
-// Property P3: Klasifikasi state eksklusif
-property('bulb_state_exclusive', () => {
-  forAll(/* semua kombinasi input valid */, (batteries, bulbs, watt, type) => {
-    const result = computePhysics(type, batteries, bulbs, watt);
-    const states = ['dim', 'normal', 'overload'];
-    return states.filter(s => s === result.bulbState).length === 1;
-  });
-});
-
-// Property P4: Overload → I = 0
-property('overload_breaks_current', () => {
-  forAll(/* ... */, (batteries, bulbs, watt, type) => {
-    const result = computePhysics(type, batteries, bulbs, watt);
-    if (result.bulbState === 'overload') {
-      return result.I === 0;
-    }
-    return true;
-  });
-});
+  }
+}
 ```
 
 ---

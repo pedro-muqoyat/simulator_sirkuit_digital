@@ -132,7 +132,7 @@ Simulator Sirkuit Digital (Petualangan Arus Elektron) adalah aplikasi web edukas
 2. THE UI SHALL menampilkan nilai I (arus) dalam satuan Ampere (A) secara real-time.
 3. THE UI SHALL menampilkan nilai R_total (hambatan total) dalam satuan Ohm (Ω) secara real-time.
 4. THE UI SHALL menampilkan nilai P_actual (daya aktual per lampu) dalam satuan Watt (W) secara real-time.
-5. WHEN Overload_State terjadi, THE UI SHALL menampilkan pesan peringatan yang jelas dan ramah anak (misalnya "⚡ OVERLOAD! Lampu Putus!") untuk memberikan umpan balik edukatif.
+5. WHEN Overload_State terjadi, THE UI SHALL menampilkan pesan peringatan yang jelas dan ramah anak (misalnya "OVERLOAD! Lampu Putus!") untuk memberikan umpan balik edukatif; THE UI SHALL TIDAK menggunakan karakter emoji atau simbol Unicode non-alfanumerik grafis dalam teks pesan tersebut.
 6. WHEN Circuit kembali ke kondisi normal setelah Overload_State (pengguna mengubah variabel), THE UI SHALL menghapus pesan peringatan dan menampilkan nilai fisika yang diperbarui.
 
 ---
