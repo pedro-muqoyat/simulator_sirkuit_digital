@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  const IS_DEVELOPMENT     = false;
+
   const V_BATTERY          = 1.5;
   const OVERLOAD_FACTOR    = 1.3;
   const ELECTRON_COUNT     = 22;
@@ -834,6 +836,7 @@
     sim.isKabelPutus      = false;
     sim.activeR_total     = 0;
     sim.arusPerLampu      = 0;
+    sim.hitBoxRadius      = 30;
     blasts.length         = 0;
     resetBulbs(1);
 
@@ -2306,6 +2309,7 @@
     const savedSim = snapshotSim();
 
     try {
+      assertCriticalScenarios();
       assertSimMonomorphic();
       assertGeometry();
       assertParticleSystemMonomorphic();
@@ -2360,7 +2364,6 @@
       }
 
       assertBlastTriggeredOncePerTransition();
-      assertCriticalScenarios();
       assertBatteryLifeCalc();
       assertParallelIPerBulb();
       assertSeriesInvariant();
@@ -2389,13 +2392,15 @@
     runPhysics();
     updateDisplay();
 
-    try {
-      runSelfTests();
-    } catch (testError) {
-      const errorBanner = document.createElement('div');
-      errorBanner.textContent = 'Self-test gagal: ' + testError.message;
-      errorBanner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#ff5252;color:#fff;padding:0.5rem 1rem;font-size:0.75rem;z-index:9999;';
-      document.body.appendChild(errorBanner);
+    if (IS_DEVELOPMENT) {
+      try {
+        runSelfTests();
+      } catch (testError) {
+        const errorBanner = document.createElement('div');
+        errorBanner.textContent = 'Self-test gagal: ' + testError.message;
+        errorBanner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#ff5252;color:#fff;padding:0.5rem 1rem;font-size:0.75rem;z-index:9999;';
+        document.body.appendChild(errorBanner);
+      }
     }
 
     radiosCircuitType.forEach(r => r.addEventListener('change', onCircuitTypeChange));
