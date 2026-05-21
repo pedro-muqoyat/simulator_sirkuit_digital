@@ -271,11 +271,14 @@
       elItemCurrentPerBulb.hidden = true;
     }
 
-    if (sim.bulbState === 'overload' && sim.I_peak > 0) {
-      elCurrentPeak.textContent  = `${sim.I_peak.toFixed(3)} A (rangkaian terbuka)`;
-      elItemCurrentPeak.hidden   = false;
+    if (sim.bulbState === 'overload') {
+      if (sim.I_peak > 0) {
+        elCurrentPeak.textContent  = `${sim.I_peak.toFixed(3)} A (rangkaian terbuka)`;
+        elItemCurrentPeak.hidden   = false;
+      } else {
+        elItemCurrentPeak.hidden = true;
+      }
     } else {
-      sim.I_peak               = 0;
       elItemCurrentPeak.hidden = true;
     }
 
@@ -1885,5 +1888,21 @@
   } else {
     init();
   }
+
+  window.__TEST_EXPORTS__ = {
+    sim,
+    updateDisplay,
+    runPhysics,
+    elVoltage,
+    elResistance,
+    elPower,
+    elCurrent,
+    elStatus,
+    elLabelCurrent,
+    elCurrentPerBulb,
+    elItemCurrentPerBulb,
+    elCurrentPeak,
+    elItemCurrentPeak,
+  };
 
 })();
