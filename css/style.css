@@ -225,6 +225,25 @@ body {
 .info-value--status.status-normal   { color: var(--clr-success); }
 .info-value--status.status-overload { color: var(--clr-danger); }
 
+.info-edu-text {
+  min-height: 3.5rem;
+  margin-top: var(--sp-sm);
+  padding: var(--sp-sm) var(--sp-md);
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--clr-text-muted);
+  line-height: 1.6;
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+.info-edu-text.edu-normal   { color: var(--clr-success);   border-color: var(--clr-success); }
+.info-edu-text.edu-dim      { color: var(--clr-accent-2);  border-color: var(--clr-accent-2); }
+.info-edu-text.edu-overload { color: var(--clr-danger);    border-color: var(--clr-danger); }
+.info-edu-text.edu-open     { color: var(--clr-text-muted); border-color: var(--clr-border); }
+
 .control-panel {
   background: var(--clr-surface);
   border: 2px solid var(--clr-border);
@@ -364,6 +383,12 @@ body {
 .radio-label:hover {
   border-color: var(--clr-accent);
   background: rgba(247,201,72,0.08);
+}
+
+.radio-group--watt .radio-label {
+  font-size: 0.75rem;
+  min-height: 44px;
+  flex: 1 1 0;
 }
 
 .radio-input {

@@ -13,7 +13,7 @@
     circuitType  : 'seri',
     batteryCount : 1,
     bulbCount    : 1,
-    bulbWatt     : 10,
+    bulbWatt     : 5,
     V_total      : 0,
     R_total      : 0,
     I            : 0,
@@ -24,7 +24,7 @@
     wasOverload  : false,
     blastTime          : 0,
     blastActive        : false,
-    isSakelarTertutup  : true,
+    isSakelarTertutup  : false,
     isKabelPutus       : false,
     activeR_total      : 0,
   };
@@ -44,6 +44,7 @@
   const elBatteryLife        = document.getElementById('displayBatteryLife');
   const elCurrentPeak        = document.getElementById('displayCurrentPeak');
   const elItemCurrentPeak    = document.getElementById('itemCurrentPeak');
+  const elEduText            = document.getElementById('displayEduText');
 
   const sliderBattery      = document.getElementById('batteryCount');
   const labelBattery       = document.getElementById('batteryCountDisplay');
@@ -330,6 +331,8 @@
       elStatus.className          = 'info-value info-value--status status-open';
       elStatus.textContent        = 'Sirkuit Terbuka';
       elBatteryLife.textContent   = '-';
+      elEduText.className         = 'info-edu-text edu-open';
+      elEduText.textContent       = 'Rangkaian Terbuka: Sakelar terbuka atau kabel terputus membuat aliran listrik terhenti sepenuhnya, sehingga lampu mati.';
       return;
     }
 
@@ -341,6 +344,8 @@
       elStatus.className          = 'info-value info-value--status status-open';
       elStatus.textContent        = 'Sirkuit Terbuka';
       elBatteryLife.textContent   = '-';
+      elEduText.className         = 'info-edu-text edu-open';
+      elEduText.textContent       = 'Rangkaian Terbuka: Sakelar terbuka atau kabel terputus membuat aliran listrik terhenti sepenuhnya, sehingga lampu mati.';
       return;
     }
 
@@ -390,6 +395,18 @@
       elBatteryLife.textContent = hours > 0
         ? `${hours} jam ${minutes} menit`
         : `${minutes} menit`;
+    }
+
+    elEduText.className = 'info-edu-text';
+    if (sim.bulbState === 'overload') {
+      elEduText.textContent = 'Bahaya! Tegangan baterai terlalu besar melebihi kemampuan lampu, kawat lampu kepanasan dan meledak!';
+      elEduText.classList.add('edu-overload');
+    } else if (sim.bulbState === 'normal') {
+      elEduText.textContent = 'Listrik pas! Lampu menyala terang benderang dan aman.';
+      elEduText.classList.add('edu-normal');
+    } else {
+      elEduText.textContent = 'Listriknya kurang bertenaga karena baterainya sedikit atau Watt lampunya terlalu besar.';
+      elEduText.classList.add('edu-dim');
     }
   }
 
@@ -695,7 +712,7 @@
 
   function onSakelarToggle() {
     sim.isSakelarTertutup = !sim.isSakelarTertutup;
-    btnSakelar.textContent = sim.isSakelarTertutup ? 'ON (Tertutup)' : 'OFF (Terbuka)';
+    btnSakelar.textContent = sim.isSakelarTertutup ? 'ON' : 'OFF';
     btnSakelar.setAttribute('aria-pressed', sim.isSakelarTertutup ? 'true' : 'false');
     if (sim.isSakelarTertutup) {
       btnSakelar.classList.remove('btn-sakelar--off');
@@ -743,20 +760,20 @@
     sim.circuitType  = 'seri';
     sim.batteryCount = 1;
     sim.bulbCount    = 1;
-    sim.bulbWatt     = 10;
+    sim.bulbWatt     = 5;
     sim.wasOverload       = false;
     sim.blastActive       = false;
     sim.I_peak            = 0;
-    sim.isSakelarTertutup = true;
+    sim.isSakelarTertutup = false;
     sim.isKabelPutus      = false;
     sim.activeR_total     = 0;
     blasts.length         = 0;
-    rebuildBulbs(1);
+    resetBulbs(1);
 
-    btnSakelar.textContent = 'ON (Tertutup)';
-    btnSakelar.classList.remove('btn-sakelar--off');
-    btnSakelar.classList.add('btn-sakelar--on');
-    btnSakelar.setAttribute('aria-pressed', 'true');
+    btnSakelar.textContent = 'OFF';
+    btnSakelar.classList.remove('btn-sakelar--on');
+    btnSakelar.classList.add('btn-sakelar--off');
+    btnSakelar.setAttribute('aria-pressed', 'false');
 
     document.getElementById('typeSeri').checked = true;
     sliderBattery.value = 1;
@@ -765,9 +782,12 @@
     sliderBulb.value = 1;
     labelBulb.textContent = 1;
     sliderBulb.setAttribute('aria-valuenow', 1);
-    document.getElementById('watt10').checked = true;
+    document.getElementById('watt5').checked = true;
 
-    overloadBanner.hidden = true;
+    overloadBanner.hidden       = true;
+    elItemCurrentPeak.hidden    = false;
+    elCurrentPeak.textContent   = '0.000 A';
+    elItemCurrentPerBulb.hidden = true;
 
     runPhysics();
     updateDisplay();
@@ -2285,6 +2305,12 @@
     resizeCanvas();
     initElectrons(getGeometry().densePath);
     rebuildBulbs(sim.bulbCount);
+
+    btnSakelar.textContent = 'OFF';
+    btnSakelar.classList.remove('btn-sakelar--on');
+    btnSakelar.classList.add('btn-sakelar--off');
+    btnSakelar.setAttribute('aria-pressed', 'false');
+
     runPhysics();
     updateDisplay();
 
