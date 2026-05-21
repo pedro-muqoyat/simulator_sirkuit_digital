@@ -15,6 +15,7 @@
   --clr-text:        #e8f4fd;
   --clr-text-muted:  #90b4ce;
   --clr-border:      #2e4a6a;
+  --color-red-stopped: #CC0000;
 
   --font-base: 'Segoe UI', 'Arial Rounded MT Bold', Arial, sans-serif;
   --fs-xs:   0.875rem;
@@ -224,6 +225,7 @@ body {
 .info-value--status.status-dim      { color: var(--clr-accent-2); }
 .info-value--status.status-normal   { color: var(--clr-success); }
 .info-value--status.status-overload { color: var(--clr-danger); }
+.info-value--status.status-open     { color: var(--clr-text-muted); }
 
 .info-edu-text {
   min-height: 3.5rem;
@@ -243,6 +245,14 @@ body {
 .info-edu-text.edu-dim      { color: var(--clr-accent-2);  border-color: var(--clr-accent-2); }
 .info-edu-text.edu-overload { color: var(--clr-danger);    border-color: var(--clr-danger); }
 .info-edu-text.edu-open     { color: var(--clr-text-muted); border-color: var(--clr-border); }
+.info-edu-text.status--disconnected { color: var(--clr-danger); border-color: var(--clr-danger); }
+
+.info-value--status.status--disconnected { color: var(--clr-danger); }
+
+#circuitCanvas {
+  cursor: default;
+  transition: cursor 0s;
+}
 
 .control-panel {
   background: var(--clr-surface);

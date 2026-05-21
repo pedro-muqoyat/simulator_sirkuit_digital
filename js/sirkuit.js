@@ -27,6 +27,8 @@
     isSakelarTertutup  : false,
     isKabelPutus       : false,
     activeR_total      : 0,
+    arusPerLampu       : 0,
+    hitBoxRadius       : 30,
   };
 
   const canvas          = document.getElementById('circuitCanvas');
@@ -217,6 +219,19 @@
 
     const R_bulb = (V_BATTERY * V_BATTERY) / bulbWatt;
 
+    if (bulbs.length > 0 && bulbs.every(b => b.isDetached)) {
+      const V_calc = circuitType === 'seri' ? batteryCount * V_BATTERY : V_BATTERY;
+      const R_calc = circuitType === 'seri' ? bulbCount * R_bulb : R_bulb / bulbCount;
+      sim.V_total      = V_calc;
+      sim.R_total      = R_calc;
+      sim.I            = 0;
+      sim.P_actual     = 0;
+      sim.bulbState    = 'dim';
+      sim.dimAlpha     = 0.25;
+      sim.arusPerLampu = 0;
+      return;
+    }
+
     let V_total = 0;
     let R_total = 0;
     let V_per_bulb = 0;
@@ -232,43 +247,47 @@
       V_per_bulb = V_BATTERY;
       sim.activeR_total = R_total;
       if (activeBulbs.length === 0) {
-        sim.V_total   = V_total;
-        sim.R_total   = R_total;
-        sim.I         = 0;
-        sim.P_actual  = 0;
-        sim.bulbState = 'dim';
-        sim.dimAlpha  = 0.25;
+        sim.V_total      = V_total;
+        sim.R_total      = R_total;
+        sim.I            = 0;
+        sim.P_actual     = 0;
+        sim.bulbState    = 'dim';
+        sim.dimAlpha     = 0.25;
+        sim.arusPerLampu = 0;
         return;
       }
     }
 
     if (!sim.isSakelarTertutup) {
-      sim.V_total   = V_total;
-      sim.R_total   = R_total;
-      sim.I         = 0;
-      sim.P_actual  = 0;
-      sim.bulbState = 'dim';
-      sim.dimAlpha  = 0.25;
+      sim.V_total      = V_total;
+      sim.R_total      = R_total;
+      sim.I            = 0;
+      sim.P_actual     = 0;
+      sim.bulbState    = 'dim';
+      sim.dimAlpha     = 0.25;
+      sim.arusPerLampu = 0;
       return;
     }
 
     if (sim.isKabelPutus) {
-      sim.V_total   = V_total;
-      sim.R_total   = R_total;
-      sim.I         = 0;
-      sim.P_actual  = 0;
-      sim.bulbState = 'dim';
-      sim.dimAlpha  = 0.25;
+      sim.V_total      = V_total;
+      sim.R_total      = R_total;
+      sim.I            = 0;
+      sim.P_actual     = 0;
+      sim.bulbState    = 'dim';
+      sim.dimAlpha     = 0.25;
+      sim.arusPerLampu = 0;
       return;
     }
 
     if (circuitType === 'seri' && bulbs.some(b => b.isDetached || b.isBurnt)) {
-      sim.V_total   = V_total;
-      sim.R_total   = R_total;
-      sim.I         = 0;
-      sim.P_actual  = 0;
-      sim.bulbState = 'dim';
-      sim.dimAlpha  = 0.25;
+      sim.V_total      = V_total;
+      sim.R_total      = R_total;
+      sim.I            = 0;
+      sim.P_actual     = 0;
+      sim.bulbState    = 'dim';
+      sim.dimAlpha     = 0.25;
+      sim.arusPerLampu = 0;
       return;
     }
 
@@ -309,13 +328,20 @@
       sim.I_peak      = 0;
     }
 
-    sim.V_total   = V_total;
-    sim.R_total   = R_total;
-    sim.I         = I;
-    sim.P_actual  = P_actual;
-    sim.bulbState = bulbState;
-    sim.dimAlpha  = dimAlpha;
-    sim.wasOverload = nowOverload;
+    sim.V_total      = V_total;
+    sim.R_total      = R_total;
+    sim.I            = I;
+    sim.P_actual     = P_actual;
+    sim.bulbState    = bulbState;
+    sim.dimAlpha     = dimAlpha;
+    sim.wasOverload  = nowOverload;
+
+    const R_bulb_final = (V_BATTERY * V_BATTERY) / bulbWatt;
+    if (circuitType === 'paralel' && R_bulb_final > 0) {
+      sim.arusPerLampu = V_BATTERY / R_bulb_final;
+    } else {
+      sim.arusPerLampu = 0;
+    }
   }
 
   function updateDisplay() {
@@ -324,42 +350,43 @@
     elPower.textContent      = `${sim.P_actual.toFixed(2)} W`;
 
     if (!sim.isSakelarTertutup) {
-      elLabelCurrent.textContent  = 'Arus (I)';
-      elCurrent.textContent       = '0.000 A';
-      elItemCurrentPerBulb.hidden = true;
-      elItemCurrentPeak.hidden    = true;
-      elStatus.className          = 'info-value info-value--status status-open';
-      elStatus.textContent        = 'Sirkuit Terbuka';
-      elBatteryLife.textContent   = '-';
-      elEduText.className         = 'info-edu-text edu-open';
-      elEduText.textContent       = 'Rangkaian Terbuka: Sakelar terbuka atau kabel terputus membuat aliran listrik terhenti sepenuhnya, sehingga lampu mati.';
+      elLabelCurrent.textContent       = 'Arus (I)';
+      elCurrent.textContent            = '0.000 A';
+      elItemCurrentPerBulb.hidden      = false;
+      elCurrentPerBulb.textContent     = '0.00 A';
+      elItemCurrentPeak.hidden         = true;
+      elStatus.className               = 'info-value info-value--status status-open';
+      elStatus.textContent             = 'Sirkuit Terbuka';
+      elBatteryLife.textContent        = '-';
+      elEduText.className              = 'info-edu-text edu-open';
+      elEduText.textContent            = 'Rangkaian Terbuka: Sakelar terbuka atau kabel terputus membuat aliran listrik terhenti sepenuhnya, sehingga lampu mati.';
       return;
     }
 
     if (sim.isKabelPutus) {
-      elLabelCurrent.textContent  = 'Arus (I)';
-      elCurrent.textContent       = '0.000 A';
-      elItemCurrentPerBulb.hidden = true;
-      elItemCurrentPeak.hidden    = true;
-      elStatus.className          = 'info-value info-value--status status-open';
-      elStatus.textContent        = 'Sirkuit Terbuka';
-      elBatteryLife.textContent   = '-';
-      elEduText.className         = 'info-edu-text edu-open';
-      elEduText.textContent       = 'Rangkaian Terbuka: Sakelar terbuka atau kabel terputus membuat aliran listrik terhenti sepenuhnya, sehingga lampu mati.';
+      elLabelCurrent.textContent       = 'Arus (I)';
+      elCurrent.textContent            = '0.000 A';
+      elItemCurrentPerBulb.hidden      = false;
+      elCurrentPerBulb.textContent     = '0.00 A';
+      elItemCurrentPeak.hidden         = true;
+      elStatus.className               = 'info-value info-value--status status-open';
+      elStatus.textContent             = 'Sirkuit Terbuka';
+      elBatteryLife.textContent        = '-';
+      elEduText.className              = 'info-edu-text edu-open';
+      elEduText.textContent            = 'Rangkaian Terbuka: Sakelar terbuka atau kabel terputus membuat aliran listrik terhenti sepenuhnya, sehingga lampu mati.';
       return;
     }
 
     if (sim.circuitType === 'paralel' && sim.bulbCount > 1 && sim.bulbState !== 'overload') {
-      elLabelCurrent.textContent       = 'Arus Total (I)';
-      elCurrent.textContent            = `${sim.I.toFixed(3)} A`;
-      const iPerBulb                   = sim.bulbCount > 0 ? sim.I / sim.bulbCount : 0;
-      elCurrentPerBulb.textContent     = `${iPerBulb.toFixed(3)} A`;
-      elItemCurrentPerBulb.hidden      = false;
+      elLabelCurrent.textContent   = 'Kuat Arus (I)';
+      elCurrent.textContent        = `${sim.I.toFixed(3)} A`;
     } else {
-      elLabelCurrent.textContent  = 'Arus (I)';
-      elCurrent.textContent       = `${sim.I.toFixed(3)} A`;
-      elItemCurrentPerBulb.hidden = true;
+      elLabelCurrent.textContent   = 'Kuat Arus (I)';
+      elCurrent.textContent        = `${sim.I.toFixed(3)} A`;
     }
+
+    elItemCurrentPerBulb.hidden  = false;
+    elCurrentPerBulb.textContent = `${sim.arusPerLampu.toFixed(2)} A`;
 
     if (sim.bulbState === 'overload') {
       if (sim.I_peak > 0) {
@@ -372,8 +399,15 @@
       elItemCurrentPeak.hidden = true;
     }
 
+    const seriesDisconnected = sim.circuitType === 'seri' && sim.I === 0 && bulbs.some(b => b.isDetached);
+    const allDetached        = bulbs.length > 0 && bulbs.every(b => b.isDetached);
+    const showDisconnected   = seriesDisconnected || allDetached;
+
     elStatus.className = 'info-value info-value--status';
-    if (sim.bulbState === 'dim') {
+    if (showDisconnected) {
+      elStatus.textContent = 'Lampu Mati';
+      elStatus.classList.add('status--disconnected');
+    } else if (sim.bulbState === 'dim') {
       elStatus.textContent = 'Redup';
       elStatus.classList.add('status-dim');
     } else if (sim.bulbState === 'normal') {
@@ -398,7 +432,10 @@
     }
 
     elEduText.className = 'info-edu-text';
-    if (sim.bulbState === 'overload') {
+    if (showDisconnected) {
+      elEduText.textContent = 'Rangkaian Terputus! Arus pada lampu tidak mengalir membuat aliran listrik terhenti sepenuhnya, sehingga lampu mati.';
+      elEduText.classList.add('status--disconnected');
+    } else if (sim.bulbState === 'overload') {
       elEduText.textContent = 'Bahaya! Tegangan baterai terlalu besar melebihi kemampuan lampu, kawat lampu kepanasan dan meledak!';
       elEduText.classList.add('edu-overload');
     } else if (sim.bulbState === 'normal') {
@@ -513,7 +550,7 @@
     ctx.font         = '12px sans-serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(`Baterai x${count}  (${(count * V_BATTERY).toFixed(1)} V)`, cx, batteryY - bh / 2 - 6);
+    ctx.fillText(`Baterai x${count}  (${sim.V_total.toFixed(1)} V)`, cx, batteryY - bh / 2 - 6);
   }
 
   function drawDetachedBulb(x, y, radius) {
@@ -697,7 +734,7 @@
   function onBulbSlider(e) {
     const val = parseInt(e.target.value, 10);
     sim.bulbCount = val;
-    rebuildBulbs(val);
+    resetBulbs(val);
     labelBulb.textContent = val;
     e.target.setAttribute('aria-valuenow', val);
     runPhysics();
@@ -723,6 +760,35 @@
     }
     runPhysics();
     updateDisplay();
+  }
+
+  function onCanvasMouseMove(e) {
+    const rect   = canvas.getBoundingClientRect();
+    const scaleX = canvas.width  / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top)  * scaleY;
+
+    const geo    = getGeometry();
+    const count  = sim.bulbCount;
+    const radius = 16;
+    const gap    = 50;
+    const totalW = count * radius * 2 + (count - 1) * gap;
+    const startX = geo.cx - totalW / 2 + radius;
+
+    let overBulb = false;
+    for (let i = 0; i < count; i++) {
+      const bulbX = startX + i * (radius * 2 + gap);
+      const bulbY = geo.bulbY;
+      const dx    = mouseX - bulbX;
+      const dy    = mouseY - bulbY;
+      const deltaD = Math.sqrt(dx * dx + dy * dy);
+      if (deltaD <= sim.hitBoxRadius) {
+        overBulb = true;
+        break;
+      }
+    }
+    canvas.style.cursor = overBulb ? 'pointer' : 'default';
   }
 
   function onCanvasClick(e) {
@@ -767,6 +833,7 @@
     sim.isSakelarTertutup = false;
     sim.isKabelPutus      = false;
     sim.activeR_total     = 0;
+    sim.arusPerLampu      = 0;
     blasts.length         = 0;
     resetBulbs(1);
 
@@ -1067,6 +1134,8 @@
       'isSakelarTertutup',
       'isKabelPutus',
       'activeR_total',
+      'arusPerLampu',
+      'hitBoxRadius',
     ];
 
     const actualKeys = Object.keys(sim);
@@ -1102,6 +1171,8 @@
     if (typeof sim.isSakelarTertutup  !== 'boolean') throw new Error('assertSimMonomorphic: isSakelarTertutup must be boolean');
     if (typeof sim.isKabelPutus       !== 'boolean') throw new Error('assertSimMonomorphic: isKabelPutus must be boolean');
     if (typeof sim.activeR_total      !== 'number')  throw new Error('assertSimMonomorphic: activeR_total must be number');
+    if (typeof sim.arusPerLampu       !== 'number')  throw new Error('assertSimMonomorphic: arusPerLampu must be number');
+    if (typeof sim.hitBoxRadius       !== 'number')  throw new Error('assertSimMonomorphic: hitBoxRadius must be number');
   }
 
   function assertSeriesCircuitLaw(result) {
@@ -2017,6 +2088,8 @@
       isSakelarTertutup  : sim.isSakelarTertutup,
       isKabelPutus       : sim.isKabelPutus,
       activeR_total      : sim.activeR_total,
+      arusPerLampu       : sim.arusPerLampu,
+      hitBoxRadius       : sim.hitBoxRadius,
     };
   }
 
@@ -2038,6 +2111,8 @@
     sim.isSakelarTertutup  = snapshot.isSakelarTertutup;
     sim.isKabelPutus       = snapshot.isKabelPutus;
     sim.activeR_total      = snapshot.activeR_total;
+    sim.arusPerLampu       = snapshot.arusPerLampu;
+    sim.hitBoxRadius       = snapshot.hitBoxRadius;
     if (!snapshot.blastActive) {
       blasts.length = 0;
     }
@@ -2331,6 +2406,7 @@
     if (!btnSakelar) throw new Error('btnSakelar element not found');
     btnSakelar.addEventListener('click', onSakelarToggle);
     canvas.addEventListener('click', onCanvasClick);
+    canvas.addEventListener('mousemove', onCanvasMouseMove);
     window.addEventListener('resize', onResize);
 
     rafId = requestAnimationFrame(loop);
