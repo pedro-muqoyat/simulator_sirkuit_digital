@@ -22,8 +22,11 @@
     bulbState    : 'normal',
     dimAlpha     : 1.0,
     wasOverload  : false,
-    blastTime    : 0,
-    blastActive  : false,
+    blastTime          : 0,
+    blastActive        : false,
+    isSakelarTertutup  : true,
+    isKabelPutus       : false,
+    activeR_total      : 0,
   };
 
   const canvas          = document.getElementById('circuitCanvas');
@@ -49,6 +52,7 @@
   const radiosCircuitType  = document.querySelectorAll('input[name="circuitType"]');
   const radiosBulbWatt     = document.querySelectorAll('input[name="bulbWatt"]');
   const btnReset           = document.getElementById('btnReset');
+  const btnSakelar         = document.getElementById('btnSakelar');
 
   let cw = 0;
   let ch = 0;
@@ -107,6 +111,24 @@
   }
 
   const electrons = [];
+
+  const bulbs = [];
+
+  function rebuildBulbs(count) {
+    while (bulbs.length < count) {
+      bulbs.push({ isDetached: false, isBurnt: false });
+    }
+    while (bulbs.length > count) {
+      bulbs.pop();
+    }
+  }
+
+  function resetBulbs(count) {
+    bulbs.length = 0;
+    for (let i = 0; i < count; i++) {
+      bulbs.push({ isDetached: false, isBurnt: false });
+    }
+  }
 
   function createElectron(densePath) {
     return {
@@ -203,9 +225,50 @@
       R_total    = bulbCount * R_bulb;
       V_per_bulb = R_total > 0 ? V_total / bulbCount : 0;
     } else {
+      const activeBulbs = bulbs.filter(b => !b.isDetached && !b.isBurnt);
       V_total    = V_BATTERY;
-      R_total    = R_bulb / bulbCount;
+      R_total    = activeBulbs.length > 0 ? R_bulb / activeBulbs.length : R_bulb / bulbCount;
       V_per_bulb = V_BATTERY;
+      sim.activeR_total = R_total;
+      if (activeBulbs.length === 0) {
+        sim.V_total   = V_total;
+        sim.R_total   = R_total;
+        sim.I         = 0;
+        sim.P_actual  = 0;
+        sim.bulbState = 'dim';
+        sim.dimAlpha  = 0.25;
+        return;
+      }
+    }
+
+    if (!sim.isSakelarTertutup) {
+      sim.V_total   = V_total;
+      sim.R_total   = R_total;
+      sim.I         = 0;
+      sim.P_actual  = 0;
+      sim.bulbState = 'dim';
+      sim.dimAlpha  = 0.25;
+      return;
+    }
+
+    if (sim.isKabelPutus) {
+      sim.V_total   = V_total;
+      sim.R_total   = R_total;
+      sim.I         = 0;
+      sim.P_actual  = 0;
+      sim.bulbState = 'dim';
+      sim.dimAlpha  = 0.25;
+      return;
+    }
+
+    if (circuitType === 'seri' && bulbs.some(b => b.isDetached || b.isBurnt)) {
+      sim.V_total   = V_total;
+      sim.R_total   = R_total;
+      sim.I         = 0;
+      sim.P_actual  = 0;
+      sim.bulbState = 'dim';
+      sim.dimAlpha  = 0.25;
+      return;
     }
 
     let I = R_total > 0 ? V_total / R_total : 0;
@@ -259,6 +322,28 @@
     elResistance.textContent = `${sim.R_total.toFixed(2)} \u03A9`;
     elPower.textContent      = `${sim.P_actual.toFixed(2)} W`;
 
+    if (!sim.isSakelarTertutup) {
+      elLabelCurrent.textContent  = 'Arus (I)';
+      elCurrent.textContent       = '0.000 A';
+      elItemCurrentPerBulb.hidden = true;
+      elItemCurrentPeak.hidden    = true;
+      elStatus.className          = 'info-value info-value--status status-open';
+      elStatus.textContent        = 'Sirkuit Terbuka';
+      elBatteryLife.textContent   = '-';
+      return;
+    }
+
+    if (sim.isKabelPutus) {
+      elLabelCurrent.textContent  = 'Arus (I)';
+      elCurrent.textContent       = '0.000 A';
+      elItemCurrentPerBulb.hidden = true;
+      elItemCurrentPeak.hidden    = true;
+      elStatus.className          = 'info-value info-value--status status-open';
+      elStatus.textContent        = 'Sirkuit Terbuka';
+      elBatteryLife.textContent   = '-';
+      return;
+    }
+
     if (sim.circuitType === 'paralel' && sim.bulbCount > 1 && sim.bulbState !== 'overload') {
       elLabelCurrent.textContent       = 'Arus Total (I)';
       elCurrent.textContent            = `${sim.I.toFixed(3)} A`;
@@ -287,10 +372,10 @@
       elStatus.textContent = 'Redup';
       elStatus.classList.add('status-dim');
     } else if (sim.bulbState === 'normal') {
-      elStatus.textContent = 'Normal';
+      elStatus.textContent = 'Menyala Normal';
       elStatus.classList.add('status-normal');
     } else {
-      elStatus.textContent = 'OVERLOAD!';
+      elStatus.textContent = 'Lampu Putus';
       elStatus.classList.add('status-overload');
     }
 
@@ -336,6 +421,44 @@
       }
       ctx.stroke();
     }
+
+    drawSwitch(geo);
+  }
+
+  function drawSwitch(geo) {
+    const switchX    = geo.left;
+    const switchMidY = (geo.top + geo.bottom) / 2;
+    const halfLen    = Math.min(cw, ch) * 0.06;
+
+    const pointA = { x: switchX, y: switchMidY - halfLen };
+    const pointB = { x: switchX, y: switchMidY + halfLen };
+
+    if (sim.isSakelarTertutup) {
+      ctx.strokeStyle = '#00AA00';
+      ctx.lineWidth   = 6;
+      ctx.beginPath();
+      ctx.moveTo(pointA.x, pointA.y);
+      ctx.lineTo(pointB.x, pointB.y);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = '#CC0000';
+      ctx.lineWidth   = 6;
+      ctx.beginPath();
+      ctx.moveTo(pointA.x, pointA.y);
+      ctx.lineTo(pointA.x, pointA.y + halfLen - 4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pointB.x, pointB.y - halfLen + 4);
+      ctx.lineTo(pointB.x, pointB.y);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle    = '#90b4ce';
+    ctx.font         = '11px sans-serif';
+    ctx.textAlign    = 'right';
+    ctx.textBaseline = 'middle';
+    const labelText  = sim.isSakelarTertutup ? 'ON' : 'OFF';
+    ctx.fillText(labelText, switchX - 8, switchMidY);
   }
 
   function drawBatteries(geo) {
@@ -376,20 +499,47 @@
     ctx.fillText(`Baterai x${count}  (${(count * V_BATTERY).toFixed(1)} V)`, cx, batteryY - bh / 2 - 6);
   }
 
+  function drawDetachedBulb(x, y, radius) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle   = '#333333';
+    ctx.fill();
+    ctx.strokeStyle = '#555555';
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+
+    ctx.strokeStyle = '#555555';
+    ctx.lineWidth   = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 4, y - radius - 2);
+    ctx.lineTo(x - 4, y - radius - 8);
+    ctx.moveTo(x + 4, y - radius - 2);
+    ctx.lineTo(x + 4, y - radius - 8);
+    ctx.stroke();
+  }
+
   function drawBulbs(geo) {
     const { bulbY, cx } = geo;
-    const count  = sim.bulbCount;
-    const radius = 16;
-    const gap    = 50;
-    const totalW = count * radius * 2 + (count - 1) * gap;
-    const startX = cx - totalW / 2 + radius;
+    const count   = sim.bulbCount;
+    const radius  = 16;
+    const gap     = 50;
+    const totalW  = count * radius * 2 + (count - 1) * gap;
+    const startX  = cx - totalW / 2 + radius;
+    const DETACH_OFFSET = 20;
 
     for (let i = 0; i < count; i++) {
       const bx = startX + i * (radius * 2 + gap);
       const by = bulbY;
 
-      if (sim.bulbState === 'overload') {
-        drawBrokenBulb(bx, by, radius);
+      if (bulbs[i] && bulbs[i].isDetached) {
+        drawDetachedBulb(bx, by + DETACH_OFFSET, radius);
+      } else if ((bulbs[i] && bulbs[i].isBurnt) || sim.bulbState === 'overload') {
+        try {
+          drawBrokenBulb(bx, by, radius);
+        } catch (renderError) {
+          ctx.fillStyle = '#ff5252';
+          ctx.fillRect(bx - radius, by - radius, radius * 2, radius * 2);
+        }
       } else {
         drawNormalBulb(bx, by, radius, sim.dimAlpha);
       }
@@ -530,6 +680,7 @@
   function onBulbSlider(e) {
     const val = parseInt(e.target.value, 10);
     sim.bulbCount = val;
+    rebuildBulbs(val);
     labelBulb.textContent = val;
     e.target.setAttribute('aria-valuenow', val);
     runPhysics();
@@ -542,15 +693,70 @@
     updateDisplay();
   }
 
+  function onSakelarToggle() {
+    sim.isSakelarTertutup = !sim.isSakelarTertutup;
+    btnSakelar.textContent = sim.isSakelarTertutup ? 'ON (Tertutup)' : 'OFF (Terbuka)';
+    btnSakelar.setAttribute('aria-pressed', sim.isSakelarTertutup ? 'true' : 'false');
+    if (sim.isSakelarTertutup) {
+      btnSakelar.classList.remove('btn-sakelar--off');
+      btnSakelar.classList.add('btn-sakelar--on');
+    } else {
+      btnSakelar.classList.remove('btn-sakelar--on');
+      btnSakelar.classList.add('btn-sakelar--off');
+    }
+    runPhysics();
+    updateDisplay();
+  }
+
+  function onCanvasClick(e) {
+    const rect   = canvas.getBoundingClientRect();
+    const scaleX = canvas.width  / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top)  * scaleY;
+
+    const geo     = getGeometry();
+    const count   = sim.bulbCount;
+    const radius  = 16;
+    const gap     = 50;
+    const totalW  = count * radius * 2 + (count - 1) * gap;
+    const startX  = geo.cx - totalW / 2 + radius;
+    const hitRadius = radius * 1.4;
+
+    for (let i = 0; i < count; i++) {
+      const bulbX = startX + i * (radius * 2 + gap);
+      const bulbY = geo.bulbY;
+      const dx    = clickX - bulbX;
+      const dy    = clickY - bulbY;
+      const dist  = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist <= hitRadius && !bulbs[i].isBurnt) {
+        bulbs[i].isDetached = !bulbs[i].isDetached;
+        runPhysics();
+        updateDisplay();
+        return;
+      }
+    }
+  }
+
   function onReset() {
     sim.circuitType  = 'seri';
     sim.batteryCount = 1;
     sim.bulbCount    = 1;
     sim.bulbWatt     = 10;
-    sim.wasOverload  = false;
-    sim.blastActive  = false;
-    sim.I_peak       = 0;
-    blasts.length    = 0;
+    sim.wasOverload       = false;
+    sim.blastActive       = false;
+    sim.I_peak            = 0;
+    sim.isSakelarTertutup = true;
+    sim.isKabelPutus      = false;
+    sim.activeR_total     = 0;
+    blasts.length         = 0;
+    rebuildBulbs(1);
+
+    btnSakelar.textContent = 'ON (Tertutup)';
+    btnSakelar.classList.remove('btn-sakelar--off');
+    btnSakelar.classList.add('btn-sakelar--on');
+    btnSakelar.setAttribute('aria-pressed', 'true');
 
     document.getElementById('typeSeri').checked = true;
     sliderBattery.value = 1;
@@ -838,6 +1044,9 @@
       'wasOverload',
       'blastTime',
       'blastActive',
+      'isSakelarTertutup',
+      'isKabelPutus',
+      'activeR_total',
     ];
 
     const actualKeys = Object.keys(sim);
@@ -856,20 +1065,23 @@
       );
     }
 
-    if (typeof sim.circuitType  !== 'string')  throw new Error('assertSimMonomorphic: circuitType must be string');
-    if (typeof sim.batteryCount !== 'number')  throw new Error('assertSimMonomorphic: batteryCount must be number');
-    if (typeof sim.bulbCount    !== 'number')  throw new Error('assertSimMonomorphic: bulbCount must be number');
-    if (typeof sim.bulbWatt     !== 'number')  throw new Error('assertSimMonomorphic: bulbWatt must be number');
-    if (typeof sim.V_total      !== 'number')  throw new Error('assertSimMonomorphic: V_total must be number');
-    if (typeof sim.R_total      !== 'number')  throw new Error('assertSimMonomorphic: R_total must be number');
-    if (typeof sim.I            !== 'number')  throw new Error('assertSimMonomorphic: I must be number');
-    if (typeof sim.I_peak       !== 'number')  throw new Error('assertSimMonomorphic: I_peak must be number');
-    if (typeof sim.P_actual     !== 'number')  throw new Error('assertSimMonomorphic: P_actual must be number');
-    if (typeof sim.bulbState    !== 'string')  throw new Error('assertSimMonomorphic: bulbState must be string');
-    if (typeof sim.dimAlpha     !== 'number')  throw new Error('assertSimMonomorphic: dimAlpha must be number');
-    if (typeof sim.wasOverload  !== 'boolean') throw new Error('assertSimMonomorphic: wasOverload must be boolean');
-    if (typeof sim.blastTime    !== 'number')  throw new Error('assertSimMonomorphic: blastTime must be number');
-    if (typeof sim.blastActive  !== 'boolean') throw new Error('assertSimMonomorphic: blastActive must be boolean');
+    if (typeof sim.circuitType        !== 'string')  throw new Error('assertSimMonomorphic: circuitType must be string');
+    if (typeof sim.batteryCount       !== 'number')  throw new Error('assertSimMonomorphic: batteryCount must be number');
+    if (typeof sim.bulbCount          !== 'number')  throw new Error('assertSimMonomorphic: bulbCount must be number');
+    if (typeof sim.bulbWatt           !== 'number')  throw new Error('assertSimMonomorphic: bulbWatt must be number');
+    if (typeof sim.V_total            !== 'number')  throw new Error('assertSimMonomorphic: V_total must be number');
+    if (typeof sim.R_total            !== 'number')  throw new Error('assertSimMonomorphic: R_total must be number');
+    if (typeof sim.I                  !== 'number')  throw new Error('assertSimMonomorphic: I must be number');
+    if (typeof sim.I_peak             !== 'number')  throw new Error('assertSimMonomorphic: I_peak must be number');
+    if (typeof sim.P_actual           !== 'number')  throw new Error('assertSimMonomorphic: P_actual must be number');
+    if (typeof sim.bulbState          !== 'string')  throw new Error('assertSimMonomorphic: bulbState must be string');
+    if (typeof sim.dimAlpha           !== 'number')  throw new Error('assertSimMonomorphic: dimAlpha must be number');
+    if (typeof sim.wasOverload        !== 'boolean') throw new Error('assertSimMonomorphic: wasOverload must be boolean');
+    if (typeof sim.blastTime          !== 'number')  throw new Error('assertSimMonomorphic: blastTime must be number');
+    if (typeof sim.blastActive        !== 'boolean') throw new Error('assertSimMonomorphic: blastActive must be boolean');
+    if (typeof sim.isSakelarTertutup  !== 'boolean') throw new Error('assertSimMonomorphic: isSakelarTertutup must be boolean');
+    if (typeof sim.isKabelPutus       !== 'boolean') throw new Error('assertSimMonomorphic: isKabelPutus must be boolean');
+    if (typeof sim.activeR_total      !== 'number')  throw new Error('assertSimMonomorphic: activeR_total must be number');
   }
 
   function assertSeriesCircuitLaw(result) {
@@ -1559,14 +1771,26 @@
     const savedBlastActive5  = sim.blastActive;
     const savedBlastTime5    = sim.blastTime;
 
-    sim.wasOverload  = false;
-    sim.circuitType  = 'seri';
-    sim.batteryCount = 4;
-    sim.bulbCount    = 1;
-    sim.bulbWatt     = 5;
+    sim.wasOverload       = false;
+    sim.circuitType       = 'seri';
+    sim.batteryCount      = 4;
+    sim.bulbCount         = 1;
+    sim.bulbWatt          = 5;
+    sim.isSakelarTertutup = true;
+    sim.isKabelPutus      = false;
+    resetBulbs(1);
     runPhysics();
     if (sim.wasOverload !== true) {
-      throw new Error('assertCriticalScenarios test5: wasOverload must be true after overload transition');
+      throw new Error(
+        'assertCriticalScenarios test5: wasOverload must be true after overload transition' +
+        ' | isSakelarTertutup=' + sim.isSakelarTertutup +
+        ' | isKabelPutus=' + sim.isKabelPutus +
+        ' | bulbs[0].isDetached=' + (bulbs[0] ? bulbs[0].isDetached : 'undefined') +
+        ' | bulbs[0].isBurnt=' + (bulbs[0] ? bulbs[0].isBurnt : 'undefined') +
+        ' | bulbs.length=' + bulbs.length +
+        ' | bulbState=' + sim.bulbState +
+        ' | I=' + sim.I
+      );
     }
     if (sim.I !== 0) {
       throw new Error('assertCriticalScenarios test5: I must be 0 during overload, got=' + sim.I);
@@ -1605,12 +1829,15 @@
     const savedBlastActive6  = sim.blastActive;
     const savedBlastTime6    = sim.blastTime;
 
-    sim.wasOverload  = true;
-    sim.blastActive  = true;
-    sim.circuitType  = 'seri';
-    sim.batteryCount = 1;
-    sim.bulbCount    = 1;
-    sim.bulbWatt     = 10;
+    sim.wasOverload       = true;
+    sim.blastActive       = true;
+    sim.circuitType       = 'seri';
+    sim.batteryCount      = 1;
+    sim.bulbCount         = 1;
+    sim.bulbWatt          = 10;
+    sim.isSakelarTertutup = true;
+    sim.isKabelPutus      = false;
+    resetBulbs(1);
     runPhysics();
     if (sim.blastActive !== false) {
       throw new Error('assertCriticalScenarios test6: blastActive must be false after exiting overload');
@@ -1753,42 +1980,231 @@
 
   function snapshotSim() {
     return {
-      circuitType  : sim.circuitType,
-      batteryCount : sim.batteryCount,
-      bulbCount    : sim.bulbCount,
-      bulbWatt     : sim.bulbWatt,
-      V_total      : sim.V_total,
-      R_total      : sim.R_total,
-      I            : sim.I,
-      I_peak       : sim.I_peak,
-      P_actual     : sim.P_actual,
-      bulbState    : sim.bulbState,
-      dimAlpha     : sim.dimAlpha,
-      wasOverload  : sim.wasOverload,
-      blastTime    : sim.blastTime,
-      blastActive  : sim.blastActive,
+      circuitType        : sim.circuitType,
+      batteryCount       : sim.batteryCount,
+      bulbCount          : sim.bulbCount,
+      bulbWatt           : sim.bulbWatt,
+      V_total            : sim.V_total,
+      R_total            : sim.R_total,
+      I                  : sim.I,
+      I_peak             : sim.I_peak,
+      P_actual           : sim.P_actual,
+      bulbState          : sim.bulbState,
+      dimAlpha           : sim.dimAlpha,
+      wasOverload        : sim.wasOverload,
+      blastTime          : sim.blastTime,
+      blastActive        : sim.blastActive,
+      isSakelarTertutup  : sim.isSakelarTertutup,
+      isKabelPutus       : sim.isKabelPutus,
+      activeR_total      : sim.activeR_total,
     };
   }
 
   function restoreSim(snapshot) {
-    sim.circuitType  = snapshot.circuitType;
-    sim.batteryCount = snapshot.batteryCount;
-    sim.bulbCount    = snapshot.bulbCount;
-    sim.bulbWatt     = snapshot.bulbWatt;
-    sim.V_total      = snapshot.V_total;
-    sim.R_total      = snapshot.R_total;
-    sim.I            = snapshot.I;
-    sim.I_peak       = snapshot.I_peak;
-    sim.P_actual     = snapshot.P_actual;
-    sim.bulbState    = snapshot.bulbState;
-    sim.dimAlpha     = snapshot.dimAlpha;
-    sim.wasOverload  = snapshot.wasOverload;
-    sim.blastTime    = snapshot.blastTime;
-    sim.blastActive  = snapshot.blastActive;
+    sim.circuitType        = snapshot.circuitType;
+    sim.batteryCount       = snapshot.batteryCount;
+    sim.bulbCount          = snapshot.bulbCount;
+    sim.bulbWatt           = snapshot.bulbWatt;
+    sim.V_total            = snapshot.V_total;
+    sim.R_total            = snapshot.R_total;
+    sim.I                  = snapshot.I;
+    sim.I_peak             = snapshot.I_peak;
+    sim.P_actual           = snapshot.P_actual;
+    sim.bulbState          = snapshot.bulbState;
+    sim.dimAlpha           = snapshot.dimAlpha;
+    sim.wasOverload        = snapshot.wasOverload;
+    sim.blastTime          = snapshot.blastTime;
+    sim.blastActive        = snapshot.blastActive;
+    sim.isSakelarTertutup  = snapshot.isSakelarTertutup;
+    sim.isKabelPutus       = snapshot.isKabelPutus;
+    sim.activeR_total      = snapshot.activeR_total;
     if (!snapshot.blastActive) {
       blasts.length = 0;
     }
     updateDisplay();
+  }
+
+  function assertSakelarForcesZeroCurrent() {
+    const circuitTypes  = ['seri', 'paralel'];
+    const batteryCounts = [1, 2, 3, 4];
+    const bulbCounts    = [1, 2, 3, 4];
+    const wattOptions   = [5, 10, 25];
+
+    for (const type of circuitTypes) {
+      for (const batteries of batteryCounts) {
+        for (const bulbs of bulbCounts) {
+          for (const watt of wattOptions) {
+            sim.circuitType       = type;
+            sim.batteryCount      = batteries;
+            sim.bulbCount         = bulbs;
+            sim.bulbWatt          = watt;
+            sim.isSakelarTertutup = false;
+            sim.wasOverload       = false;
+            sim.blastActive       = false;
+
+            runPhysics();
+
+            if (sim.I !== 0) {
+              throw new Error(
+                'assertSakelarForcesZeroCurrent: I must be 0 when sakelar OFF, got=' + sim.I +
+                ' (type=' + type + ' batteries=' + batteries + ' bulbs=' + bulbs + ' watt=' + watt + ')'
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function assertSakelarDimState() {
+    const circuitTypes  = ['seri', 'paralel'];
+    const batteryCounts = [1, 2, 3, 4];
+    const bulbCounts    = [1, 2, 3, 4];
+    const wattOptions   = [5, 10, 25];
+
+    for (const type of circuitTypes) {
+      for (const batteries of batteryCounts) {
+        for (const bulbs of bulbCounts) {
+          for (const watt of wattOptions) {
+            sim.circuitType       = type;
+            sim.batteryCount      = batteries;
+            sim.bulbCount         = bulbs;
+            sim.bulbWatt          = watt;
+            sim.isSakelarTertutup = false;
+            sim.wasOverload       = false;
+            sim.blastActive       = false;
+
+            runPhysics();
+
+            if (sim.bulbState !== 'dim') {
+              throw new Error(
+                'assertSakelarDimState: bulbState must be dim when sakelar OFF, got=' + sim.bulbState +
+                ' (type=' + type + ' batteries=' + batteries + ' bulbs=' + bulbs + ' watt=' + watt + ')'
+              );
+            }
+
+            if (sim.dimAlpha !== 0.25) {
+              throw new Error(
+                'assertSakelarDimState: dimAlpha must be 0.25 when sakelar OFF, got=' + sim.dimAlpha +
+                ' (type=' + type + ' batteries=' + batteries + ' bulbs=' + bulbs + ' watt=' + watt + ')'
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function assertSeriesDetachedForcesZeroCurrent() {
+    const batteryCounts = [1, 2, 3, 4];
+    const bulbCounts    = [1, 2, 3, 4];
+    const wattOptions   = [5, 10, 25];
+
+    for (const batteries of batteryCounts) {
+      for (const bulbCount of bulbCounts) {
+        for (const watt of wattOptions) {
+          sim.circuitType       = 'seri';
+          sim.batteryCount      = batteries;
+          sim.bulbCount         = bulbCount;
+          sim.bulbWatt          = watt;
+          sim.isSakelarTertutup = true;
+          sim.isKabelPutus      = false;
+          sim.wasOverload       = false;
+          sim.blastActive       = false;
+          resetBulbs(bulbCount);
+          bulbs[0].isDetached = true;
+
+          runPhysics();
+
+          if (sim.I !== 0) {
+            throw new Error(
+              'assertSeriesDetachedForcesZeroCurrent: I must be 0 when bulb detached in seri, got=' + sim.I +
+              ' batteries=' + batteries + ' bulbs=' + bulbCount + ' watt=' + watt
+            );
+          }
+          resetBulbs(bulbCount);
+        }
+      }
+    }
+  }
+
+  function assertParallelDetachedReducesR() {
+    const wattOptions = [5, 10, 25];
+
+    for (const watt of wattOptions) {
+      for (let bulbCount = 2; bulbCount <= 4; bulbCount++) {
+        sim.circuitType       = 'paralel';
+        sim.batteryCount      = 1;
+        sim.bulbCount         = bulbCount;
+        sim.bulbWatt          = watt;
+        sim.isSakelarTertutup = true;
+        sim.isKabelPutus      = false;
+        sim.wasOverload       = false;
+        sim.blastActive       = false;
+        resetBulbs(bulbCount);
+        bulbs[0].isDetached = true;
+
+        runPhysics();
+
+        if (sim.I <= 0) {
+          throw new Error(
+            'assertParallelDetachedReducesR: I must be > 0 when one bulb detached in paralel with remaining active, got=' + sim.I +
+            ' bulbs=' + bulbCount + ' watt=' + watt
+          );
+        }
+
+        const R_bulb    = (V_BATTERY * V_BATTERY) / watt;
+        const expectedR = R_bulb / (bulbCount - 1);
+        const EPS       = 0.0001;
+        if (Math.abs(sim.R_total - expectedR) > EPS) {
+          throw new Error(
+            'assertParallelDetachedReducesR: R_total must equal R_bulb/(bulbCount-1), expected=' + expectedR + ' got=' + sim.R_total +
+            ' bulbs=' + bulbCount + ' watt=' + watt
+          );
+        }
+        resetBulbs(bulbCount);
+      }
+    }
+  }
+
+  function assertKabelPutusZeroCurrent() {
+    const circuitTypes  = ['seri', 'paralel'];
+    const batteryCounts = [1, 2, 3, 4];
+    const bulbCounts    = [1, 2, 3, 4];
+    const wattOptions   = [5, 10, 25];
+
+    for (const type of circuitTypes) {
+      for (const batteries of batteryCounts) {
+        for (const bulbCount of bulbCounts) {
+          for (const watt of wattOptions) {
+            sim.circuitType       = type;
+            sim.batteryCount      = batteries;
+            sim.bulbCount         = bulbCount;
+            sim.bulbWatt          = watt;
+            sim.isSakelarTertutup = true;
+            sim.isKabelPutus      = true;
+            sim.wasOverload       = false;
+            sim.blastActive       = false;
+            resetBulbs(bulbCount);
+
+            runPhysics();
+
+            if (sim.I !== 0) {
+              throw new Error(
+                'assertKabelPutusZeroCurrent: I must be 0 when isKabelPutus=true, got=' + sim.I +
+                ' type=' + type + ' batteries=' + batteries + ' bulbs=' + bulbCount + ' watt=' + watt
+              );
+            }
+            if (sim.blastActive !== false) {
+              throw new Error(
+                'assertKabelPutusZeroCurrent: blastActive must not change when isKabelPutus=true'
+              );
+            }
+          }
+        }
+      }
+    }
+    sim.isKabelPutus = false;
   }
 
   function runSelfTests() {
@@ -1800,6 +2216,13 @@
       assertParticleSystemMonomorphic();
       assertBulbStateClassification();
       assertRenderLayerOrder();
+
+      assertSakelarForcesZeroCurrent();
+      assertSakelarDimState();
+
+      assertSeriesDetachedForcesZeroCurrent();
+      assertParallelDetachedReducesR();
+      assertKabelPutusZeroCurrent();
 
       const batteryOptions = [1, 2, 3, 4];
       const bulbOptions    = [1, 2, 3, 4];
@@ -1861,6 +2284,7 @@
     }
     resizeCanvas();
     initElectrons(getGeometry().densePath);
+    rebuildBulbs(sim.bulbCount);
     runPhysics();
     updateDisplay();
 
@@ -1878,6 +2302,9 @@
     sliderBattery.addEventListener('input', onBatterySlider);
     sliderBulb.addEventListener('input', onBulbSlider);
     btnReset.addEventListener('click', onReset);
+    if (!btnSakelar) throw new Error('btnSakelar element not found');
+    btnSakelar.addEventListener('click', onSakelarToggle);
+    canvas.addEventListener('click', onCanvasClick);
     window.addEventListener('resize', onResize);
 
     rafId = requestAnimationFrame(loop);

@@ -491,3 +491,51 @@ body {
   outline: 3px solid var(--clr-accent);
   outline-offset: 3px;
 }
+
+.btn-sakelar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--sp-sm) var(--sp-md);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  font-family: var(--font-base);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  letter-spacing: 0.03em;
+  border: 2px solid transparent;
+}
+
+.btn-sakelar--on {
+  background: linear-gradient(135deg, #0d2a1a, #1a4a2e);
+  color: #69f0ae;
+  border-color: #00AA00;
+}
+
+.btn-sakelar--on:hover {
+  background: linear-gradient(135deg, #122e1e, #1e5234);
+  box-shadow: 0 0 16px rgba(0, 170, 0, 0.4);
+}
+
+.btn-sakelar--off {
+  background: linear-gradient(135deg, #2a0d0d, #4a1a1a);
+  color: #ff8a80;
+  border-color: #CC0000;
+}
+
+.btn-sakelar--off:hover {
+  background: linear-gradient(135deg, #2e1212, #521e1e);
+  box-shadow: 0 0 16px rgba(204, 0, 0, 0.4);
+}
+
+.btn-sakelar:active {
+  transform: scale(0.97);
+}
+
+.btn-sakelar:focus-visible {
+  outline: 3px solid var(--clr-accent);
+  outline-offset: 3px;
+}
