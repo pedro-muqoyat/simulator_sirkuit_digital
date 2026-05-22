@@ -794,28 +794,39 @@
   }
 
   function onCanvasClick(e) {
-    const rect   = canvas.getBoundingClientRect();
-    const scaleX = canvas.width  / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top)  * scaleY;
+    e.preventDefault();
 
-    const geo     = getGeometry();
-    const count   = sim.bulbCount;
-    const radius  = 16;
-    const gap     = 50;
-    const totalW  = count * radius * 2 + (count - 1) * gap;
-    const startX  = geo.cx - totalW / 2 + radius;
-    const hitRadius = radius * 1.4;
+    const rect = canvas.getBoundingClientRect();
+
+    let clientX;
+    let clientY;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const x = (clientX - rect.left) * (canvas.width  / rect.width);
+    const y = (clientY - rect.top)  * (canvas.height / rect.height);
+
+    const geo       = getGeometry();
+    const count     = sim.bulbCount;
+    const radius    = 16;
+    const gap       = 50;
+    const totalW    = count * radius * 2 + (count - 1) * gap;
+    const startX    = geo.cx - totalW / 2 + radius;
+    const hitRadius = sim.hitBoxRadius;
 
     for (let i = 0; i < count; i++) {
-      const bulbX = startX + i * (radius * 2 + gap);
-      const bulbY = geo.bulbY;
-      const dx    = clickX - bulbX;
-      const dy    = clickY - bulbY;
-      const dist  = Math.sqrt(dx * dx + dy * dy);
+      const bulbX  = startX + i * (radius * 2 + gap);
+      const bulbY  = geo.bulbY;
+      const dx     = x - bulbX;
+      const dy     = y - bulbY;
+      const deltaD = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist <= hitRadius && !bulbs[i].isBurnt) {
+      if (deltaD <= hitRadius && !bulbs[i].isBurnt) {
         bulbs[i].isDetached = !bulbs[i].isDetached;
         runPhysics();
         updateDisplay();
