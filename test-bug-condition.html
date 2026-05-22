@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bug Condition Exploration Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    .test-result {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .pass {
+      background: #1e3a1e;
+      border-left: 4px solid #4caf50;
+    }
+    .fail {
+      background: #3a1e1e;
+      border-left: 4px solid #f44336;
+    }
+    .info {
+      background: #1e2a3a;
+      border-left: 4px solid #2196f3;
+    }
+    h1 {
+      color: #4fc3f7;
+    }
+    h2 {
+      color: #81c784;
+      margin-top: 30px;
+    }
+    pre {
+      background: #2d2d2d;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Bug Condition Exploration Test</h1>
+  <p><strong>Property 1: Bug Condition - Display Function Purity Violation</strong></p>
+  <p>Validates: Requirements 2.1</p>
+  <p><strong>CRITICAL:</strong> This test MUST FAIL on unfixed code - failure confirms the bug exists</p>
+  
+  <div id="test-output"></div>
+
+  <script src="js/sirkuit.js"></script>
+  <script>
+    const testOutput = document.getElementById('test-output');
+
+    function logResult(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `test-result ${type}`;
+      div.textContent = message;
+      testOutput.appendChild(div);
+    }
+
+    function logCounterexample(example) {
+      const div = document.createElement('div');
+      div.className = 'test-result fail';
+      div.innerHTML = '<strong>COUNTEREXAMPLE FOUND:</strong><pre>' + JSON.stringify(example, null, 2) + '</pre>';
+      testOutput.appendChild(div);
+    }
+
+    function generateRandomCircuitState() {
+      const bulbStates = ['normal', 'dim'];
+      const circuitTypes = ['seri', 'paralel'];
+      const bulbCounts = [1, 2, 3];
+      const voltages = [3, 6, 9, 12];
+      const powers = [5, 10, 25];
+      
+      return {
+        bulbState: bulbStates[Math.floor(Math.random() * bulbStates.length)],
+        circuitType: circuitTypes[Math.floor(Math.random() * circuitTypes.length)],
+        bulbCount: bulbCounts[Math.floor(Math.random() * bulbCounts.length)],
+        V_total: voltages[Math.floor(Math.random() * voltages.length)],
+        P_nominal: powers[Math.floor(Math.random() * powers.length)],
+        I_peak: Math.random() * 2 + 0.5
+      };
+    }
+
+    function testDisplayFunctionPurity() {
+      logResult('=== PROPERTY 1: Bug Condition - Display Function Purity Violation ===', 'info');
+      logResult('Testing that updateDisplay() does NOT mutate sim.I_peak when sim.bulbState !== "overload"', 'info');
+      logResult('', 'info');
+
+      const { sim, updateDisplay } = window.__TEST_EXPORTS__;
+
+      const numTests = 100;
+      let failureCount = 0;
+      const counterexamples = [];
+
+      for (let i = 0; i < numTests; i++) {
+        const testState = generateRandomCircuitState();
+        
+        sim.V_total = testState.V_total;
+        sim.R_total = testState.V_total * testState.V_total / testState.P_nominal;
+        sim.P_actual = testState.P_nominal;
+        sim.I = testState.V_total / (testState.V_total * testState.V_total / testState.P_nominal);
+        sim.bulbState = testState.bulbState;
+        sim.circuitType = testState.circuitType;
+        sim.bulbCount = testState.bulbCount;
+        sim.I_peak = testState.I_peak;
+
+        const I_peak_before = sim.I_peak;
+        
+        try {
+          updateDisplay();
+        } catch (e) {
+          logResult(`Test ${i + 1}: Error during updateDisplay() - ${e.message}`, 'fail');
+          continue;
+        }
+
+        const I_peak_after = sim.I_peak;
+
+        if (I_peak_before !== I_peak_after) {
+          failureCount++;
+          const counterexample = {
+            testNumber: i + 1,
+            bulbState: testState.bulbState,
+            circuitType: testState.circuitType,
+            bulbCount: testState.bulbCount,
+            I_peak_before: I_peak_before,
+            I_peak_after: I_peak_after,
+            mutation: `sim.I_peak changed from ${I_peak_before} to ${I_peak_after}`,
+            violation: 'updateDisplay() mutated sim.I_peak when sim.bulbState !== "overload"'
+          };
+          
+          if (counterexamples.length < 5) {
+            counterexamples.push(counterexample);
+          }
+        }
+      }
+
+      logResult('', 'info');
+      logResult(`Ran ${numTests} property-based test cases`, 'info');
+      logResult(`Scoped to: sim.bulbState !== "overload"`, 'info');
+      logResult('', 'info');
+
+      if (failureCount > 0) {
+        logResult(`PROPERTY VIOLATED: ${failureCount}/${numTests} cases failed`, 'fail');
+        logResult('', 'info');
+        logResult('EXPECTED OUTCOME: Test FAILS on unfixed code', 'info');
+        logResult('This confirms the bug exists: line 282 in updateDisplay() mutates sim.I_peak', 'info');
+        logResult('', 'info');
+        logResult('Counterexamples demonstrating the separation of concerns violation:', 'info');
+        
+        counterexamples.forEach(example => {
+          logCounterexample(example);
+        });
+
+        logResult('', 'info');
+        logResult('ROOT CAUSE: updateDisplay() at line 282 sets sim.I_peak = 0', 'fail');
+        logResult('This violates separation of concerns - display functions should only READ state, never WRITE it', 'fail');
+        logResult('', 'info');
+        logResult('TEST STATUS: FAILED (as expected on unfixed code)', 'fail');
+        
+        return false;
+      } else {
+        logResult('UNEXPECTED: Property holds for all test cases', 'pass');
+        logResult('This suggests the bug may not exist or the test needs adjustment', 'info');
+        logResult('', 'info');
+        logResult('TEST STATUS: PASSED (unexpected - should fail on unfixed code)', 'pass');
+        
+        return true;
+      }
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        testDisplayFunctionPurity();
+      }, 100);
+    });
+  </script>
+</body>
+</html>

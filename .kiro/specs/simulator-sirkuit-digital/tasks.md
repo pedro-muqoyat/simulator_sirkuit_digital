@@ -281,6 +281,126 @@ Urutan task: struktur HTML → CSS responsif → Physics Engine → Canvas Rende
 - [x] 11. Checkpoint akhir — Verifikasi integrasi penuh
   - Pastikan semua property tests dan unit tests lulus, tanyakan kepada pengguna jika ada pertanyaan.
 
+- [ ] 12. Tambahkan `isKabelPutus` dan `activeR_total` ke state object `sim` di `js/sirkuit.js`
+  - Tambahkan properti `isKabelPutus : false` dan `activeR_total : 0` ke deklarasi literal objek `sim` yang sudah ada
+  - Tipe `isKabelPutus` harus `boolean` dengan nilai default `false`
+  - Tipe `activeR_total` harus `number` dengan nilai default `0`
+  - Shape objek `sim` menjadi 17 properti; tidak ada properti lain yang ditambah
+  - _Requirements: 7.1, 7.2_
+
+- [ ] 13. Tambahkan array `bulbs[]` monomorphic di `js/sirkuit.js`
+  - [ ] 13.1 Deklarasikan array `bulbs` dan fungsi `rebuildBulbs(count)` di `js/sirkuit.js`
+    - `bulbs` adalah array yang selalu memiliki panjang sama dengan `sim.bulbCount`
+    - Setiap elemen memiliki shape tetap: `{ isDetached: false, isBurnt: false }`
+    - `rebuildBulbs(count)` mengisi ulang array dengan objek baru saat `bulbCount` berubah; Bulb yang sudah ada dipertahankan jika count bertambah, Bulb terakhir dihapus jika count berkurang
+    - _Requirements: 4.1, 4.3_
+
+  - [ ] 13.2 Panggil `rebuildBulbs()` di semua titik yang mengubah `sim.bulbCount`
+    - Panggil `rebuildBulbs(sim.bulbCount)` di `onBulbSlider()` setelah `sim.bulbCount` diperbarui
+    - Panggil `rebuildBulbs(sim.bulbCount)` di `onReset()` setelah `sim.bulbCount` dikembalikan ke default
+    - Panggil `rebuildBulbs(1)` di `init()` untuk inisialisasi awal
+    - _Requirements: 4.1_
+
+- [ ] 14. Modifikasi `runPhysics()` — tambahkan logika isKabelPutus, isDetached seri, dan isDetached paralel
+  - [ ] 14.1 Tambahkan early-return `isKabelPutus` di `runPhysics()`
+    - Tempatkan blok tepat setelah blok early-return `isSakelarTertutup` yang sudah ada
+    - Blok menetapkan `sim.V_total`, `sim.R_total`, `sim.I = 0`, `sim.P_actual = 0`, `sim.bulbState = 'dim'`, `sim.dimAlpha = 0.25`, lalu `return`
+    - `sim.wasOverload` dan `sim.blastActive` tidak disentuh
+    - _Requirements: 7.2, 7.4_
+
+  - [ ] 14.2 Tambahkan early-return seri dengan Bulb dicabut/terbakar di `runPhysics()`
+    - Tempatkan blok di dalam cabang `circuitType === 'seri'`, setelah kalkulasi `V_total` dan `R_total`
+    - Cek `bulbs.some(b => b.isDetached || b.isBurnt)` — jika true, paksa `sim.I = 0`, `sim.P_actual = 0`, `sim.bulbState = 'dim'`, `sim.dimAlpha = 0.25`, lalu `return`
+    - _Requirements: 5.1, 5.2_
+
+  - [ ] 14.3 Modifikasi kalkulasi paralel untuk filter cabang aktif di `runPhysics()`
+    - Hitung `activeBulbs = bulbs.filter(b => !b.isDetached && !b.isBurnt)`
+    - Jika `activeBulbs.length === 0`, paksa `sim.I = 0`, `sim.P_actual = 0`, `sim.bulbState = 'dim'`, `sim.dimAlpha = 0.25`, lalu `return`
+    - Gunakan `activeBulbs.length` sebagai pengganti `sim.bulbCount` dalam kalkulasi `R_total = R_bulb / activeBulbs.length`
+    - Simpan hasil ke `sim.activeR_total`
+    - _Requirements: 6.1, 6.3_
+
+- [ ] 15. Implementasikan `onCanvasClick(e)` — Hit Detection Pythagoras di `js/sirkuit.js`
+  - [ ] 15.1 Implementasikan fungsi `onCanvasClick(e)` di `js/sirkuit.js`
+    - Konversi koordinat klik dari layar ke canvas: `rect = canvas.getBoundingClientRect()`, `scaleX = canvas.width / rect.width`, `scaleY = canvas.height / rect.height`, `clickX = (e.clientX - rect.left) * scaleX`, `clickY = (e.clientY - rect.top) * scaleY`
+    - Iterasi `bulbs[]` dan hitung jarak Pythagoras: `dist = Math.sqrt(dx*dx + dy*dy)` di mana `dx = clickX - bulbX`, `dy = clickY - bulbY`
+    - Jika `dist <= hitRadius` dan `bulbs[i].isBurnt === false`, toggle `bulbs[i].isDetached`, panggil `runPhysics()` dan `updateDisplay()`, lalu `return`
+    - `hitRadius = geo.bulbRadius * 1.4` untuk kemudahan sentuh
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+
+  - [ ] 15.2 Daftarkan `onCanvasClick` sebagai event listener di `init()`
+    - Tambahkan `canvas.addEventListener('click', onCanvasClick)` di blok event binding yang sudah ada
+    - _Requirements: 4.1_
+
+- [ ] 16. Implementasikan `drawDetachedBulb(x, y, radius)` dan modifikasi `drawBulbs()` di `js/sirkuit.js`
+  - [ ] 16.1 Implementasikan fungsi `drawDetachedBulb(x, y, radius)` di `js/sirkuit.js`
+    - Gambar lingkaran dengan `strokeStyle = '#555555'`, `fillStyle = '#333333'`, `lineWidth = 2`
+    - Posisi `y` sudah digeser `DETACH_OFFSET` (20px) ke bawah oleh pemanggil
+    - Gambar dua garis pendek vertikal di atas lingkaran untuk menunjukkan konektor yang terlepas
+    - _Requirements: 4.6, 10.4_
+
+  - [ ] 16.2 Modifikasi `drawBulbs()` untuk iterasi `bulbs[]` dan delegasi ke fungsi yang sesuai
+    - Ganti logika draw Bulb tunggal dengan loop `for (let i = 0; i < bulbs.length; i++)`
+    - Hitung `bulbX` untuk setiap Bulb berdasarkan indeks dan jumlah Bulb aktif
+    - Jika `bulbs[i].isDetached === true`: panggil `drawDetachedBulb(bulbX, bulbY + DETACH_OFFSET, radius)`
+    - Jika `bulbs[i].isBurnt === true` atau `sim.bulbState === 'overload'`: panggil `drawBrokenBulb(bulbX, bulbY, radius)`
+    - Selain itu: panggil `drawNormalBulb(bulbX, bulbY, radius, sim.dimAlpha)`
+    - _Requirements: 10.1, 10.2, 10.3, 10.4_
+
+- [ ] 17. Perbarui `updateDisplay()` — teks status ramah anak dan cabang isKabelPutus
+  - Perbarui teks status `'Normal'` menjadi `'Menyala Normal'` menggunakan `element.textContent`
+  - Perbarui teks status `'OVERLOAD!'` menjadi `'Lampu Putus'` menggunakan `element.textContent`
+  - Tambahkan cabang `isKabelPutus` yang menampilkan `elStatus.textContent = 'Sirkuit Terbuka'` dan `elCurrent.textContent = '0.000 A'`
+  - Pastikan semua penulisan teks status menggunakan `element.textContent` — tidak ada `innerHTML`
+  - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 13.7_
+
+- [ ] 18. Perbarui `onReset()` — reset `isKabelPutus` dan `bulbs[]`
+  - Tambahkan `sim.isKabelPutus = false` di blok reset `sim.*`
+  - Tambahkan `sim.activeR_total = 0` di blok reset `sim.*`
+  - Panggil `rebuildBulbs(1)` untuk mereset semua `isDetached` dan `isBurnt` ke `false`
+  - _Requirements: 7.5, 4.5_
+
+- [ ] 19. Perbarui `assertSimMonomorphic()` dan `snapshotSim()` / `restoreSim()` untuk 17 properti
+  - [ ] 19.1 Perbarui `assertSimMonomorphic()` untuk 17 properti
+    - Tambahkan `'isKabelPutus'` dan `'activeR_total'` ke array `requiredKeys`
+    - Perbarui pengecekan jumlah key dari 15 menjadi 17
+    - Tambahkan pengecekan tipe: `typeof sim.isKabelPutus !== 'boolean'` dan `typeof sim.activeR_total !== 'number'`
+    - _Requirements: 1.7_
+
+  - [ ] 19.2 Perbarui `snapshotSim()` dan `restoreSim()` untuk menyertakan `isKabelPutus` dan `activeR_total`
+    - Di `snapshotSim()`: tambahkan `isKabelPutus: sim.isKabelPutus` dan `activeR_total: sim.activeR_total`
+    - Di `restoreSim()`: tambahkan `sim.isKabelPutus = snapshot.isKabelPutus` dan `sim.activeR_total = snapshot.activeR_total`
+    - _Requirements: 1.7_
+
+- [ ] 20. Tulis property tests baru untuk fitur Bulb Detachment dan Wire di `runSelfTests()`
+  - [ ]* 20.1 Tulis property test untuk Property 12: Seri — Bulb dicabut memutus sirkuit
+    - Implementasikan `assertSeriesDetachedForcesZeroCurrent()` di `js/sirkuit.js`
+    - Iterasi semua kombinasi: `circuitType='seri'` × `batteryCount` × `bulbCount` × `bulbWatt`
+    - Setiap iterasi: set `bulbs[0].isDetached = true`, panggil `runPhysics()`, assert `sim.I === 0`
+    - _Requirements: 5.1_
+
+  - [ ]* 20.2 Tulis property test untuk Property 13: Paralel — Bulb dicabut hanya mematikan cabang
+    - Implementasikan `assertParallelDetachedReducesR()` di `js/sirkuit.js`
+    - Untuk `bulbCount >= 2`: set `bulbs[0].isDetached = true`, panggil `runPhysics()`, assert `sim.I > 0` dan `sim.R_total === R_bulb / (bulbCount - 1)`
+    - _Requirements: 6.1, 6.2_
+
+  - [ ]* 20.3 Tulis property test untuk Property 11: Wire putus memaksa I = 0
+    - Implementasikan `assertKabelPutusZeroCurrent()` di `js/sirkuit.js`
+    - Iterasi semua 96 kombinasi: set `sim.isKabelPutus = true`, panggil `runPhysics()`, assert `sim.I === 0`
+    - _Requirements: 7.2_
+
+  - [ ] 20.4 Integrasikan ketiga property test baru ke `runSelfTests()`
+    - Tambahkan pemanggilan `assertSeriesDetachedForcesZeroCurrent()`, `assertParallelDetachedReducesR()`, dan `assertKabelPutusZeroCurrent()` di dalam blok `try` pada `runSelfTests()`, setelah `assertSakelarDimState()`
+    - _Requirements: 1.7_
+
+- [ ] 21. Checkpoint akhir fitur interaktif — Verifikasi seluruh fitur baru
+  - Pastikan semua property tests baru (task 20) lulus
+  - Verifikasi visual: klik Bulb di canvas mengubah tampilan Bulb menjadi detached
+  - Verifikasi fisika: seri dengan Bulb dicabut → I = 0, semua Bulb lain redup
+  - Verifikasi fisika: paralel dengan 1 Bulb dicabut → I > 0, Bulb lain tetap menyala
+  - Verifikasi teks status: "Menyala Normal", "Redup", "Lampu Putus", "Sirkuit Terbuka" tampil dengan benar
+  - Tanyakan kepada pengguna jika ada pertanyaan.
+
 ---
 
 ## Notes
@@ -302,7 +422,14 @@ Urutan task: struktur HTML → CSS responsif → Physics Engine → Canvas Rende
     { "id": 2, "tasks": ["3.3", "3.4", "3.6", "3.8", "3.10", "3.11", "3.12", "3.13", "5.3", "6.2"] },
     { "id": 3, "tasks": ["5.4", "6.3", "6.4", "8.1", "8.2", "8.3", "9.1", "9.2"] },
     { "id": 4, "tasks": ["2.1", "2.2", "2.3", "6.5", "10.1", "10.2", "10.3"] },
-    { "id": 5, "tasks": ["10.4"] }
+    { "id": 5, "tasks": ["10.4"] },
+    { "id": 6, "tasks": ["12", "13.1"] },
+    { "id": 7, "tasks": ["13.2", "14.1"] },
+    { "id": 8, "tasks": ["14.2", "14.3", "15.1", "16.1"] },
+    { "id": 9, "tasks": ["15.2", "16.2", "17", "18"] },
+    { "id": 10, "tasks": ["19.1", "19.2"] },
+    { "id": 11, "tasks": ["20.1", "20.2", "20.3"] },
+    { "id": 12, "tasks": ["20.4"] }
   ]
 }
 ```

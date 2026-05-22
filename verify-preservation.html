@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify Preservation Tests - Task 3.3</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .header {
+      background: #2d2d2d;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #4fc3f7;
+    }
+    .test-result {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .pass {
+      background: #1e3a1e;
+      border-left: 4px solid #4caf50;
+    }
+    .fail {
+      background: #3a1e1e;
+      border-left: 4px solid #f44336;
+    }
+    .info {
+      background: #1e2a3a;
+      border-left: 4px solid #2196f3;
+    }
+    .summary {
+      background: #2d2d2d;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+      border-left: 4px solid #81c784;
+    }
+    h1 {
+      color: #4fc3f7;
+      margin: 0 0 10px 0;
+    }
+    h2 {
+      color: #81c784;
+      margin-top: 30px;
+    }
+    pre {
+      background: #2d2d2d;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .status-pass {
+      background: #4caf50;
+      color: white;
+    }
+    .status-fail {
+      background: #f44336;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Task 3.3: Verify Preservation Tests Still Pass</h1>
+    <p><strong>Context:</strong> After implementing the fix in task 3.1, we need to verify that all preservation tests from task 2 still pass.</p>
+    <p><strong>Expected Outcome:</strong> All preservation tests should PASS (confirms no regressions)</p>
+  </div>
+
+  <div id="test-output"></div>
+
+  <div style="display:none;">
+    <canvas id="circuitCanvas"></canvas>
+    <div id="overloadBanner"></div>
+    <span id="displayVoltage"></span>
+    <span id="displayResistance"></span>
+    <span id="displayCurrent"></span>
+    <span id="displayPower"></span>
+    <span id="displayStatus"></span>
+    <span id="labelCurrent"></span>
+    <span id="displayCurrentPerBulb"></span>
+    <div id="itemCurrentPerBulb"></div>
+    <span id="displayBatteryLife"></span>
+    <span id="displayCurrentPeak"></span>
+    <div id="itemCurrentPeak"></div>
+    <input type="range" id="batteryCount" value="1" />
+    <span id="batteryCountDisplay"></span>
+    <input type="range" id="bulbCount" value="1" />
+    <span id="bulbCountDisplay"></span>
+    <input type="radio" name="circuitType" value="seri" id="typeSeri" checked />
+    <input type="radio" name="circuitType" value="paralel" />
+    <input type="radio" name="bulbWatt" value="5" />
+    <input type="radio" name="bulbWatt" value="10" id="watt10" checked />
+    <input type="radio" name="bulbWatt" value="25" />
+    <button id="btnReset"></button>
+  </div>
+
+  <script src="js/sirkuit.js"></script>
+  <script>
+    const testOutput = document.getElementById('test-output');
+    const testResults = [];
+
+    function logResult(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `test-result ${type}`;
+      div.textContent = message;
+      testOutput.appendChild(div);
+    }
+
+    function logCounterexample(example) {
+      const div = document.createElement('div');
+      div.className = 'test-result fail';
+      div.innerHTML = '<strong>COUNTEREXAMPLE:</strong><pre>' + JSON.stringify(example, null, 2) + '</pre>';
+      testOutput.appendChild(div);
+    }
+
+    function generateOverloadState() {
+      const circuitTypes = ['seri', 'paralel'];
+      const bulbWatts = [5, 10, 25];
+      
+      return {
+        circuitType: circuitTypes[Math.floor(Math.random() * circuitTypes.length)],
+        batteryCount: Math.floor(Math.random() * 3) + 2,
+        bulbCount: 1,
+        bulbWatt: bulbWatts[Math.floor(Math.random() * bulbWatts.length)],
+        I_peak: Math.random() * 2 + 0.5
+      };
+    }
+
+    function generateNormalState() {
+      const circuitTypes = ['seri', 'paralel'];
+      const bulbWatts = [5, 10, 25];
+      const bulbStates = ['normal', 'dim'];
+      
+      return {
+        circuitType: circuitTypes[Math.floor(Math.random() * circuitTypes.length)],
+        batteryCount: Math.floor(Math.random() * 2) + 1,
+        bulbCount: Math.floor(Math.random() * 3) + 1,
+        bulbWatt: bulbWatts[Math.floor(Math.random() * bulbWatts.length)],
+        bulbState: bulbStates[Math.floor(Math.random() * bulbStates.length)]
+      };
+    }
+
+    function testOverloadDisplayPreservation() {
+      logResult('=== TEST 1: Overload Display Preservation ===', 'info');
+      logResult('Verify "Arus Sebelum Putus" displays correctly when sim.bulbState === "overload" and sim.I_peak > 0', 'info');
+      logResult('', 'info');
+
+      const { sim, updateDisplay, elItemCurrentPeak, elCurrentPeak } = window.__TEST_EXPORTS__;
+
+      const numTests = 50;
+      let failureCount = 0;
+      const counterexamples = [];
+
+      for (let i = 0; i < numTests; i++) {
+        const testState = generateOverloadState();
+        
+        sim.circuitType = testState.circuitType;
+        sim.batteryCount = testState.batteryCount;
+        sim.bulbCount = testState.bulbCount;
+        sim.bulbWatt = testState.bulbWatt;
+        sim.bulbState = 'overload';
+        sim.I_peak = testState.I_peak;
+        sim.I = 0;
+        sim.V_total = testState.batteryCount * 1.5;
+        sim.R_total = 2.25 / testState.bulbWatt;
+        sim.P_actual = testState.bulbWatt * 1.5;
+
+        try {
+          updateDisplay();
+        } catch (e) {
+          failureCount++;
+          counterexamples.push({
+            testNumber: i + 1,
+            error: e.message,
+            state: testState
+          });
+          continue;
+        }
+
+        const isHidden = elItemCurrentPeak.hidden;
+        const displayText = elCurrentPeak.textContent;
+        const expectedText = `${testState.I_peak.toFixed(3)} A (rangkaian terbuka)`;
+
+        if (isHidden || displayText !== expectedText) {
+          failureCount++;
+          if (counterexamples.length < 3) {
+            counterexamples.push({
+              testNumber: i + 1,
+              I_peak: testState.I_peak,
+              isHidden: isHidden,
+              displayText: displayText,
+              expectedText: expectedText,
+              issue: isHidden ? 'Display item is hidden when it should be visible' : 'Display text mismatch'
+            });
+          }
+        }
+      }
+
+      if (failureCount === 0) {
+        logResult(`PASS: All ${numTests} test cases passed`, 'pass');
+        logResult('Overload display rendering preserved after fix', 'pass');
+      } else {
+        logResult(`FAIL: ${failureCount}/${numTests} cases failed`, 'fail');
+        counterexamples.forEach(ex => logCounterexample(ex));
+      }
+
+      logResult('', 'info');
+      return failureCount === 0;
+    }
+
+    function testNormalDisplayPreservation() {
+      logResult('=== TEST 2: Normal Display Preservation ===', 'info');
+      logResult('Verify voltage, resistance, power, current display correctly in all states', 'info');
+      logResult('', 'info');
+
+      const { sim, updateDisplay, elVoltage, elResistance, elPower, elCurrent } = window.__TEST_EXPORTS__;
+
+      const numTests = 50;
+      let failureCount = 0;
+      const counterexamples = [];
+
+      for (let i = 0; i < numTests; i++) {
+        const testState = generateNormalState();
+        
+        sim.circuitType = testState.circuitType;
+        sim.batteryCount = testState.batteryCount;
+        sim.bulbCount = testState.bulbCount;
+        sim.bulbWatt = testState.bulbWatt;
+        sim.bulbState = testState.bulbState;
+        
+        const R_bulb = 2.25 / testState.bulbWatt;
+        if (testState.circuitType === 'seri') {
+          sim.V_total = testState.batteryCount * 1.5;
+          sim.R_total = testState.bulbCount * R_bulb;
+        } else {
+          sim.V_total = 1.5;
+          sim.R_total = R_bulb / testState.bulbCount;
+        }
+        
+        sim.I = sim.R_total > 0 ? sim.V_total / sim.R_total : 0;
+        sim.P_actual = testState.bulbWatt * 0.8;
+        sim.I_peak = 0;
+
+        try {
+          updateDisplay();
+        } catch (e) {
+          failureCount++;
+          counterexamples.push({
+            testNumber: i + 1,
+            error: e.message,
+            state: testState
+          });
+          continue;
+        }
+
+        const voltageText = elVoltage.textContent;
+        const resistanceText = elResistance.textContent;
+        const powerText = elPower.textContent;
+        const currentText = elCurrent.textContent;
+
+        const expectedVoltage = `${sim.V_total.toFixed(2)} V`;
+        const expectedResistance = `${sim.R_total.toFixed(2)} Ω`;
+        const expectedPower = `${sim.P_actual.toFixed(2)} W`;
+        const expectedCurrent = `${sim.I.toFixed(3)} A`;
+
+        if (voltageText !== expectedVoltage || resistanceText !== expectedResistance || 
+            powerText !== expectedPower || currentText !== expectedCurrent) {
+          failureCount++;
+          if (counterexamples.length < 3) {
+            counterexamples.push({
+              testNumber: i + 1,
+              voltageText: voltageText,
+              expectedVoltage: expectedVoltage,
+              resistanceText: resistanceText,
+              expectedResistance: expectedResistance,
+              powerText: powerText,
+              expectedPower: expectedPower,
+              currentText: currentText,
+              expectedCurrent: expectedCurrent
+            });
+          }
+        }
+      }
+
+      if (failureCount === 0) {
+        logResult(`PASS: All ${numTests} test cases passed`, 'pass');
+        logResult('Normal display rendering preserved after fix', 'pass');
+      } else {
+        logResult(`FAIL: ${failureCount}/${numTests} cases failed`, 'fail');
+        counterexamples.forEach(ex => logCounterexample(ex));
+      }
+
+      logResult('', 'info');
+      return failureCount === 0;
+    }
+
+    function testParallelCurrentDisplayPreservation() {
+      logResult('=== TEST 3: Parallel Current Display Preservation ===', 'info');
+      logResult('Verify "Arus per Lampu" displays correctly in parallel mode', 'info');
+      logResult('', 'info');
+
+      const { sim, updateDisplay, elItemCurrentPerBulb, elCurrentPerBulb, elLabelCurrent } = window.__TEST_EXPORTS__;
+
+      const numTests = 30;
+      let failureCount = 0;
+      const counterexamples = [];
+
+      for (let i = 0; i < numTests; i++) {
+        const bulbCount = Math.floor(Math.random() * 3) + 2;
+        const bulbWatt = [5, 10, 25][Math.floor(Math.random() * 3)];
+        
+        sim.circuitType = 'paralel';
+        sim.batteryCount = 1;
+        sim.bulbCount = bulbCount;
+        sim.bulbWatt = bulbWatt;
+        sim.bulbState = 'normal';
+        
+        const R_bulb = 2.25 / bulbWatt;
+        sim.V_total = 1.5;
+        sim.R_total = R_bulb / bulbCount;
+        sim.I = sim.V_total / sim.R_total;
+        sim.P_actual = bulbWatt * 0.9;
+        sim.I_peak = 0;
+
+        try {
+          updateDisplay();
+        } catch (e) {
+          failureCount++;
+          counterexamples.push({
+            testNumber: i + 1,
+            error: e.message,
+            bulbCount: bulbCount
+          });
+          continue;
+        }
+
+        const isHidden = elItemCurrentPerBulb.hidden;
+        const displayText = elCurrentPerBulb.textContent;
+        const labelText = elLabelCurrent.textContent;
+        const expectedPerBulb = sim.I / bulbCount;
+        const expectedText = `${expectedPerBulb.toFixed(3)} A`;
+
+        if (isHidden || displayText !== expectedText || labelText !== 'Arus Total (I)') {
+          failureCount++;
+          if (counterexamples.length < 3) {
+            counterexamples.push({
+              testNumber: i + 1,
+              bulbCount: bulbCount,
+              isHidden: isHidden,
+              displayText: displayText,
+              expectedText: expectedText,
+              labelText: labelText,
+              expectedLabel: 'Arus Total (I)'
+            });
+          }
+        }
+      }
+
+      if (failureCount === 0) {
+        logResult(`PASS: All ${numTests} test cases passed`, 'pass');
+        logResult('Parallel current display preserved after fix', 'pass');
+      } else {
+        logResult(`FAIL: ${failureCount}/${numTests} cases failed`, 'fail');
+        counterexamples.forEach(ex => logCounterexample(ex));
+      }
+
+      logResult('', 'info');
+      return failureCount === 0;
+    }
+
+    function testStatusDisplayPreservation() {
+      logResult('=== TEST 4: Status Display Preservation ===', 'info');
+      logResult('Verify status text and styling update correctly', 'info');
+      logResult('', 'info');
+
+      const { sim, updateDisplay, elStatus } = window.__TEST_EXPORTS__;
+
+      const testCases = [
+        { bulbState: 'dim', expectedText: 'Redup', expectedClass: 'status-dim' },
+        { bulbState: 'normal', expectedText: 'Normal', expectedClass: 'status-normal' },
+        { bulbState: 'overload', expectedText: 'OVERLOAD!', expectedClass: 'status-overload' }
+      ];
+
+      let failureCount = 0;
+      const counterexamples = [];
+
+      testCases.forEach((testCase, i) => {
+        sim.bulbState = testCase.bulbState;
+        sim.circuitType = 'seri';
+        sim.batteryCount = 1;
+        sim.bulbCount = 1;
+        sim.bulbWatt = 10;
+        sim.V_total = 1.5;
+        sim.R_total = 0.225;
+        sim.I = testCase.bulbState === 'overload' ? 0 : 6.67;
+        sim.P_actual = 10;
+        sim.I_peak = testCase.bulbState === 'overload' ? 1.5 : 0;
+
+        try {
+          updateDisplay();
+        } catch (e) {
+          failureCount++;
+          counterexamples.push({
+            testNumber: i + 1,
+            error: e.message,
+            bulbState: testCase.bulbState
+          });
+          return;
+        }
+
+        const statusText = elStatus.textContent;
+        const hasExpectedClass = elStatus.classList.contains(testCase.expectedClass);
+
+        if (statusText !== testCase.expectedText || !hasExpectedClass) {
+          failureCount++;
+          counterexamples.push({
+            testNumber: i + 1,
+            bulbState: testCase.bulbState,
+            statusText: statusText,
+            expectedText: testCase.expectedText,
+            hasExpectedClass: hasExpectedClass,
+            classList: Array.from(elStatus.classList)
+          });
+        }
+      });
+
+      if (failureCount === 0) {
+        logResult(`PASS: All ${testCases.length} test cases passed`, 'pass');
+        logResult('Status display preserved after fix', 'pass');
+      } else {
+        logResult(`FAIL: ${failureCount}/${testCases.length} cases failed`, 'fail');
+        counterexamples.forEach(ex => logCounterexample(ex));
+      }
+
+      logResult('', 'info');
+      return failureCount === 0;
+    }
+
+    function testRunPhysicsStateReset() {
+      logResult('=== TEST 5: runPhysics() State Reset on Overload Transition ===', 'info');
+      logResult('Verify runPhysics() resets sim.I_peak = 0 on overload-to-normal transition', 'info');
+      logResult('', 'info');
+
+      const { sim, runPhysics } = window.__TEST_EXPORTS__;
+
+      const numTests = 30;
+      let failureCount = 0;
+      const counterexamples = [];
+
+      for (let i = 0; i < numTests; i++) {
+        sim.circuitType = 'seri';
+        sim.batteryCount = 1;
+        sim.bulbCount = 1;
+        sim.bulbWatt = 10;
+        sim.wasOverload = true;
+        sim.I_peak = Math.random() * 2 + 0.5;
+
+        const I_peak_before = sim.I_peak;
+
+        try {
+          runPhysics();
+        } catch (e) {
+          failureCount++;
+          counterexamples.push({
+            testNumber: i + 1,
+            error: e.message
+          });
+          continue;
+        }
+
+        const I_peak_after = sim.I_peak;
+        const bulbState = sim.bulbState;
+
+        if (bulbState !== 'overload' && I_peak_after !== 0) {
+          failureCount++;
+          if (counterexamples.length < 3) {
+            counterexamples.push({
+              testNumber: i + 1,
+              I_peak_before: I_peak_before,
+              I_peak_after: I_peak_after,
+              bulbState: bulbState,
+              issue: 'runPhysics() did not reset sim.I_peak to 0 on overload-to-normal transition'
+            });
+          }
+        }
+      }
+
+      if (failureCount === 0) {
+        logResult(`PASS: All ${numTests} test cases passed`, 'pass');
+        logResult('runPhysics() correctly resets sim.I_peak after fix', 'pass');
+      } else {
+        logResult(`FAIL: ${failureCount}/${numTests} cases failed`, 'fail');
+        counterexamples.forEach(ex => logCounterexample(ex));
+      }
+
+      logResult('', 'info');
+      return failureCount === 0;
+    }
+
+    function runAllTests() {
+      logResult('Starting Preservation Property Tests on FIXED code', 'info');
+      logResult('EXPECTED OUTCOME: All tests should PASS (confirms no regressions)', 'info');
+      logResult('', 'info');
+
+      const results = [];
+      
+      results.push(testOverloadDisplayPreservation());
+      results.push(testNormalDisplayPreservation());
+      results.push(testParallelCurrentDisplayPreservation());
+      results.push(testStatusDisplayPreservation());
+      results.push(testRunPhysicsStateReset());
+
+      const allPassed = results.every(r => r === true);
+
+      const summaryDiv = document.createElement('div');
+      summaryDiv.className = 'summary';
+      
+      let summaryHTML = '<h2>TASK 3.3 VERIFICATION SUMMARY</h2>';
+      
+      if (allPassed) {
+        summaryHTML += '<p class="test-result pass"><strong>SUCCESS: ALL PRESERVATION TESTS PASSED</strong><span class="status-badge status-pass">PASS</span></p>';
+        summaryHTML += '<p>All preservation tests from task 2 still pass after the fix was applied in task 3.1.</p>';
+        summaryHTML += '<p><strong>Conclusion:</strong> No regressions detected. The fix successfully resolves the bug while preserving all existing functionality.</p>';
+        summaryHTML += '<ul>';
+        summaryHTML += '<li>Overload display rendering: PRESERVED</li>';
+        summaryHTML += '<li>Normal display rendering: PRESERVED</li>';
+        summaryHTML += '<li>Parallel current display: PRESERVED</li>';
+        summaryHTML += '<li>Status display: PRESERVED</li>';
+        summaryHTML += '<li>State reset logic: PRESERVED</li>';
+        summaryHTML += '</ul>';
+      } else {
+        summaryHTML += '<p class="test-result fail"><strong>FAILURE: SOME PRESERVATION TESTS FAILED</strong><span class="status-badge status-fail">FAIL</span></p>';
+        summaryHTML += '<p>Some preservation tests failed after the fix. This indicates potential regressions.</p>';
+        summaryHTML += '<p><strong>Action Required:</strong> Review the counterexamples above and adjust the fix to preserve all existing functionality.</p>';
+      }
+      
+      summaryDiv.innerHTML = summaryHTML;
+      testOutput.appendChild(summaryDiv);
+
+      testResults.push({ allPassed, results });
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        try {
+          if (!window.__TEST_EXPORTS__) {
+            logResult('ERROR: Test exports not found. Make sure sirkuit.js is loaded.', 'fail');
+            return;
+          }
+          runAllTests();
+        } catch (e) {
+          logResult('ERROR: ' + e.message, 'fail');
+          logResult('Stack: ' + e.stack, 'fail');
+        }
+      }, 500);
+    });
+  </script>
+</body>
+</html>
