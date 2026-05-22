@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const IS_DEVELOPMENT     = true;
+  const IS_DEVELOPMENT     = false;
 
   const V_BATTERY          = 1.5;
   const OVERLOAD_FACTOR    = 1.3;
