@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const IS_DEVELOPMENT     = false;
+  const IS_DEVELOPMENT     = true;
 
   const V_BATTERY          = 1.5;
   const OVERLOAD_FACTOR    = 1.3;
@@ -2411,6 +2411,7 @@
     if (!btnSakelar) throw new Error('btnSakelar element not found');
     btnSakelar.addEventListener('click', onSakelarToggle);
     canvas.addEventListener('click', onCanvasClick);
+    canvas.addEventListener('touchstart', onCanvasClick, { passive: false });
     canvas.addEventListener('mousemove', onCanvasMouseMove);
     window.addEventListener('resize', onResize);
 

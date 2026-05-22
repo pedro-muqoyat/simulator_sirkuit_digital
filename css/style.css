@@ -252,6 +252,7 @@ body {
 #circuitCanvas {
   cursor: default;
   transition: cursor 0s;
+  touch-action: none;
 }
 
 .control-panel {
