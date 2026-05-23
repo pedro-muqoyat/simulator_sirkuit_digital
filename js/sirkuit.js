@@ -793,36 +793,16 @@
     canvas.style.cursor = overBulb ? 'pointer' : 'default';
   }
 
-  function onCanvasClick(e) {
-    if (e.type === 'touchstart') {
-      e.preventDefault();
-    }
-
-    const rect = canvas.getBoundingClientRect();
-
-    let clientX;
-    let clientY;
-    if (e.changedTouches && e.changedTouches.length > 0) {
-      clientX = e.changedTouches[0].clientX;
-      clientY = e.changedTouches[0].clientY;
-    } else if (e.touches && e.touches.length > 0) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-
-    const x = (clientX - rect.left) * (canvas.width  / rect.width);
-    const y = (clientY - rect.top)  * (canvas.height / rect.height);
-
-    const geo       = getGeometry();
-    const count     = sim.bulbCount;
-    const radius    = 16;
-    const gap       = 50;
-    const totalW    = count * radius * 2 + (count - 1) * gap;
-    const startX    = geo.cx - totalW / 2 + radius;
-    const hitRadius = sim.hitBoxRadius;
+  function prosesInteraksiLampu(clientX, clientY) {
+    const rect    = canvas.getBoundingClientRect();
+    const x       = (clientX - rect.left) * (canvas.width  / rect.width);
+    const y       = (clientY - rect.top)  * (canvas.height / rect.height);
+    const geo     = getGeometry();
+    const count   = sim.bulbCount;
+    const radius  = 16;
+    const gap     = 50;
+    const totalW  = count * radius * 2 + (count - 1) * gap;
+    const startX  = geo.cx - totalW / 2 + radius;
 
     for (let i = 0; i < count; i++) {
       const bulbX  = startX + i * (radius * 2 + gap);
@@ -831,7 +811,7 @@
       const dy     = y - bulbY;
       const deltaD = Math.sqrt(dx * dx + dy * dy);
 
-      if (deltaD <= hitRadius && !bulbs[i].isBurnt) {
+      if (deltaD <= sim.hitBoxRadius && !bulbs[i].isBurnt) {
         bulbs[i].isDetached = !bulbs[i].isDetached;
         runPhysics();
         updateDisplay();
@@ -2426,8 +2406,15 @@
     btnReset.addEventListener('click', onReset);
     if (!btnSakelar) throw new Error('btnSakelar element not found');
     btnSakelar.addEventListener('click', onSakelarToggle);
-    canvas.addEventListener('click', onCanvasClick);
-    canvas.addEventListener('touchstart', onCanvasClick, { passive: false });
+    canvas.addEventListener('click', function(e) {
+      prosesInteraksiLampu(e.clientX, e.clientY);
+    });
+    canvas.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      if (e.touches && e.touches.length > 0) {
+        prosesInteraksiLampu(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
     canvas.addEventListener('mousemove', onCanvasMouseMove);
     window.addEventListener('resize', onResize);
 
