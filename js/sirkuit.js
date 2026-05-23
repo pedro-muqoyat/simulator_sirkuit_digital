@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const IS_DEVELOPMENT     = false;
+  const IS_DEVELOPMENT     = true;
 
   const V_BATTERY          = 1.5;
   const OVERLOAD_FACTOR    = 1.3;
@@ -794,13 +794,18 @@
   }
 
   function onCanvasClick(e) {
-    e.preventDefault();
+    if (e.type === 'touchstart') {
+      e.preventDefault();
+    }
 
     const rect = canvas.getBoundingClientRect();
 
     let clientX;
     let clientY;
-    if (e.touches && e.touches.length > 0) {
+    if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    } else if (e.touches && e.touches.length > 0) {
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
     } else {
