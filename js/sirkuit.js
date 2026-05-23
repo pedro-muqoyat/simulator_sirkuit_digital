@@ -74,9 +74,10 @@
   }
 
   function getGeometry() {
-    const cx = cw / 2;
-    const cy = ch / 2;
+    const cx  = cw / 2;
+    const cy  = ch / 2;
     const pad = Math.min(cw, ch) * 0.12;
+
     const left   = pad;
     const right  = cw - pad;
     const top    = pad;
@@ -92,26 +93,85 @@
 
     const densePath = [];
     const STEPS_PER_SEGMENT = 40;
-    for (let s = 0; s < wirePath.length - 1; s++) {
-      const a = wirePath[s];
-      const b = wirePath[s + 1];
+
+    const addSegment = function(ax, ay, bx, by) {
       for (let t = 0; t < STEPS_PER_SEGMENT; t++) {
         const frac = t / STEPS_PER_SEGMENT;
         densePath.push({
-          x: a.x + (b.x - a.x) * frac,
-          y: a.y + (b.y - a.y) * frac,
+          x: ax + (bx - ax) * frac,
+          y: ay + (by - ay) * frac,
         });
       }
+    };
+
+    if (sim.circuitType === 'seri') {
+      for (let s = 0; s < wirePath.length - 1; s++) {
+        addSegment(wirePath[s].x, wirePath[s].y, wirePath[s + 1].x, wirePath[s + 1].y);
+      }
+      densePath.push({ x: left, y: top });
+    } else {
+      const count  = sim.bulbCount;
+      const radius = 16;
+      const gap    = 50;
+      const totalH = count * radius * 2 + (count - 1) * gap;
+      const startY = cy - totalH / 2 + radius;
+
+      addSegment(left, top, left, bottom);
+
+      addSegment(left, bottom, right, bottom);
+
+      addSegment(right, bottom, right, top);
+
+      addSegment(right, top, left, top);
+
+      for (let i = 0; i < count; i++) {
+        const py = startY + i * (radius * 2 + gap);
+        addSegment(left, py, cx - radius - 4, py);
+        addSegment(cx + radius + 4, py, right, py);
+      }
+
+      densePath.push({ x: left, y: top });
     }
-    densePath.push({ x: left, y: top });
+
+    const count  = sim.bulbCount;
+    const radius = 16;
+    const gap    = 50;
+
+    let bulbPositions = [];
+    let batteryY;
+    let bulbY;
+
+    if (sim.circuitType === 'seri') {
+      batteryY = bottom;
+      bulbY    = top;
+      const totalW = count * radius * 2 + (count - 1) * gap;
+      const startX = cx - totalW / 2 + radius;
+      for (let i = 0; i < count; i++) {
+        bulbPositions.push({ x: startX + i * (radius * 2 + gap), y: bulbY });
+      }
+    } else {
+      batteryY = bottom;
+      bulbY    = cy;
+      const totalH  = count * radius * 2 + (count - 1) * gap;
+      const startY  = cy - totalH / 2 + radius;
+      for (let i = 0; i < count; i++) {
+        bulbPositions.push({ x: cx, y: startY + i * (radius * 2 + gap) });
+      }
+    }
+
+    for (let i = 0; i < bulbs.length && i < bulbPositions.length; i++) {
+      bulbs[i].x = bulbPositions[i].x;
+      bulbs[i].y = bulbPositions[i].y;
+    }
 
     return {
       cx, cy,
       left, right, top, bottom,
       wirePath,
       densePath,
-      batteryY : top,
-      bulbY    : bottom,
+      batteryY,
+      bulbY,
+      bulbPositions,
     };
   }
 
@@ -121,7 +181,7 @@
 
   function rebuildBulbs(count) {
     while (bulbs.length < count) {
-      bulbs.push({ isDetached: false, isBurnt: false });
+      bulbs.push({ isDetached: false, isBurnt: false, x: 0, y: 0 });
     }
     while (bulbs.length > count) {
       bulbs.pop();
@@ -131,7 +191,7 @@
   function resetBulbs(count) {
     bulbs.length = 0;
     for (let i = 0; i < count; i++) {
-      bulbs.push({ isDetached: false, isBurnt: false });
+      bulbs.push({ isDetached: false, isBurnt: false, x: 0, y: 0 });
     }
   }
 
@@ -455,27 +515,98 @@
   }
 
   function drawWires(geo) {
-    const { wirePath } = geo;
+    const { left, right, top, bottom, bulbPositions } = geo;
+    const radius = 16;
+
     ctx.strokeStyle = '#2e4a6a';
     ctx.lineWidth   = 6;
     ctx.lineCap     = 'round';
     ctx.lineJoin    = 'round';
-    ctx.beginPath();
-    ctx.moveTo(wirePath[0].x, wirePath[0].y);
-    for (let i = 1; i < wirePath.length; i++) {
-      ctx.lineTo(wirePath[i].x, wirePath[i].y);
-    }
-    ctx.stroke();
 
-    if (sim.I > 0) {
-      ctx.strokeStyle = 'rgba(79, 195, 247, 0.35)';
-      ctx.lineWidth   = 10;
+    if (sim.circuitType === 'seri') {
+      const { wirePath } = geo;
       ctx.beginPath();
       ctx.moveTo(wirePath[0].x, wirePath[0].y);
       for (let i = 1; i < wirePath.length; i++) {
         ctx.lineTo(wirePath[i].x, wirePath[i].y);
       }
       ctx.stroke();
+
+      if (sim.I > 0) {
+        ctx.strokeStyle = 'rgba(79, 195, 247, 0.35)';
+        ctx.lineWidth   = 10;
+        ctx.beginPath();
+        ctx.moveTo(wirePath[0].x, wirePath[0].y);
+        for (let i = 1; i < wirePath.length; i++) {
+          ctx.lineTo(wirePath[i].x, wirePath[i].y);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = '#2e4a6a';
+        ctx.lineWidth   = 6;
+      }
+    } else {
+      const cx = geo.cx;
+
+      ctx.beginPath();
+      ctx.moveTo(left,  top);
+      ctx.lineTo(left,  bottom);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(right, top);
+      ctx.lineTo(right, bottom);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(left,  top);
+      ctx.lineTo(right, top);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(left,  bottom);
+      ctx.lineTo(right, bottom);
+      ctx.stroke();
+
+      for (let i = 0; i < bulbPositions.length; i++) {
+        const py = bulbPositions[i].y;
+        ctx.beginPath();
+        ctx.moveTo(left,  py);
+        ctx.lineTo(cx - radius - 4, py);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + radius + 4, py);
+        ctx.lineTo(right, py);
+        ctx.stroke();
+      }
+
+      if (sim.I > 0) {
+        ctx.strokeStyle = 'rgba(79, 195, 247, 0.35)';
+        ctx.lineWidth   = 10;
+
+        ctx.beginPath();
+        ctx.moveTo(left,  top);
+        ctx.lineTo(left,  bottom);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(right, top);
+        ctx.lineTo(right, bottom);
+        ctx.stroke();
+
+        for (let i = 0; i < bulbPositions.length; i++) {
+          const py = bulbPositions[i].y;
+          ctx.beginPath();
+          ctx.moveTo(left,  py);
+          ctx.lineTo(cx - radius - 4, py);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx + radius + 4, py);
+          ctx.lineTo(right, py);
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = '#2e4a6a';
+        ctx.lineWidth   = 6;
+      }
     }
 
     drawSwitch(geo);
@@ -518,18 +649,13 @@
   }
 
   function drawBatteries(geo) {
-    const { batteryY, cx } = geo;
+    const { batteryY, cx, left, right } = geo;
     const count  = sim.batteryCount;
     const bw     = 36;
     const bh     = 18;
     const gap    = 10;
-    const totalW = count * bw + (count - 1) * gap;
-    const startX = cx - totalW / 2;
 
-    for (let i = 0; i < count; i++) {
-      const bx = startX + i * (bw + gap);
-      const by = batteryY - bh / 2;
-
+    const drawOneBattery = function(bx, by) {
       ctx.fillStyle   = '#69f0ae';
       ctx.strokeStyle = '#0d1b2a';
       ctx.lineWidth   = 2;
@@ -537,22 +663,48 @@
       ctx.roundRect(bx, by, bw, bh, 4);
       ctx.fill();
       ctx.stroke();
-
       ctx.fillStyle = '#0d1b2a';
       ctx.fillRect(bx + bw - 4, by + bh * 0.25, 4, bh * 0.5);
-
       ctx.fillStyle    = '#0d1b2a';
       ctx.font         = 'bold 11px sans-serif';
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('+', bx + bw / 2, by + bh / 2);
+    };
+
+    if (sim.circuitType === 'seri') {
+      const totalW = count * bw + (count - 1) * gap;
+      const startX = cx - totalW / 2;
+      for (let i = 0; i < count; i++) {
+        drawOneBattery(startX + i * (bw + gap), batteryY - bh / 2);
+      }
+    } else {
+      const row1Count = Math.min(count, 2);
+      const row2Count = Math.max(0, count - 2);
+      const rowGap    = bh + 6;
+
+      const drawRow = function(n, byOffset) {
+        const totalW = n * bw + (n - 1) * gap;
+        const startX = cx - totalW / 2;
+        for (let i = 0; i < n; i++) {
+          drawOneBattery(startX + i * (bw + gap), batteryY - bh / 2 + byOffset);
+        }
+      };
+
+      if (row2Count > 0) {
+        drawRow(row1Count, -rowGap);
+        drawRow(row2Count, 0);
+      } else {
+        drawRow(row1Count, 0);
+      }
     }
 
     ctx.fillStyle    = '#90b4ce';
     ctx.font         = '12px sans-serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(`Baterai x${count}  (${sim.V_total.toFixed(1)} V)`, cx, batteryY - bh / 2 - 6);
+    const labelOffset = sim.circuitType === 'paralel' && count > 2 ? bh + 6 : 0;
+    ctx.fillText(`Baterai x${count}  (${sim.V_total.toFixed(1)} V)`, cx, batteryY - bh / 2 - 6 - labelOffset);
   }
 
   function drawDetachedBulb(x, y, radius) {
@@ -575,17 +727,16 @@
   }
 
   function drawBulbs(geo) {
-    const { bulbY, cx } = geo;
-    const count   = sim.bulbCount;
-    const radius  = 16;
-    const gap     = 50;
-    const totalW  = count * radius * 2 + (count - 1) * gap;
-    const startX  = cx - totalW / 2 + radius;
+    const { bulbPositions, cx, bulbY } = geo;
+    const count        = sim.bulbCount;
+    const radius       = 16;
     const DETACH_OFFSET = 20;
 
     for (let i = 0; i < count; i++) {
-      const bx = startX + i * (radius * 2 + gap);
-      const by = bulbY;
+      const pos = bulbPositions[i];
+      if (!pos) continue;
+      const bx = pos.x;
+      const by = pos.y;
 
       if (bulbs[i] && bulbs[i].isDetached) {
         drawDetachedBulb(bx, by + DETACH_OFFSET, radius);
@@ -601,11 +752,15 @@
       }
     }
 
+    const labelY = sim.circuitType === 'seri'
+      ? geo.top + radius + 8
+      : geo.bottom + radius + 8;
+
     ctx.fillStyle    = '#90b4ce';
     ctx.font         = '12px sans-serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(`Lampu x${count}  (${sim.bulbWatt}W nominal)`, cx, bulbY + radius + 8);
+    ctx.fillText(`Lampu x${count}  (${sim.bulbWatt}W nominal)`, cx, labelY);
   }
 
   function drawNormalBulb(x, y, radius, alpha) {
@@ -673,7 +828,7 @@
   }
 
   function drawPhysicsLabels(geo) {
-    const { cx, cy } = geo;
+    const { cx, cy, top, bottom } = geo;
     ctx.fillStyle    = 'rgba(144, 180, 206, 0.7)';
     ctx.font         = '11px sans-serif';
     ctx.textAlign    = 'center';
@@ -682,7 +837,12 @@
     const label = sim.I > 0
       ? `I = ${sim.I.toFixed(3)} A`
       : 'I = 0 A (terbuka)';
-    ctx.fillText(label, cx, cy);
+
+    const labelY = sim.circuitType === 'paralel'
+      ? top - 14
+      : cy;
+
+    ctx.fillText(label, cx, labelY);
   }
 
   function render(timestamp) {
@@ -802,20 +962,16 @@
     const scaledX = cssX * (canvas.width  / rect.width);
     const scaledY = cssY * (canvas.height / rect.height);
 
-    const geo    = getGeometry();
-    const count  = sim.bulbCount;
-    const radius = 16;
-    const gap    = 50;
-    const totalW = count * radius * 2 + (count - 1) * gap;
-    const startX = geo.cx - totalW / 2 + radius;
+    const count = sim.bulbCount;
 
     for (let i = 0; i < count; i++) {
-      const bulbX   = startX + i * (radius * 2 + gap);
-      const bulbY   = geo.bulbY;
-      const distA   = Math.sqrt((cssX    - bulbX) * (cssX    - bulbX) + (cssY    - bulbY) * (cssY    - bulbY));
-      const distB   = Math.sqrt((scaledX - bulbX) * (scaledX - bulbX) + (scaledY - bulbY) * (scaledY - bulbY));
+      if (!bulbs[i] || bulbs[i].isBurnt) continue;
+      const bulbX  = bulbs[i].x || 0;
+      const bulbY  = bulbs[i].y || 0;
+      const distA  = Math.sqrt((cssX    - bulbX) * (cssX    - bulbX) + (cssY    - bulbY) * (cssY    - bulbY));
+      const distB  = Math.sqrt((scaledX - bulbX) * (scaledX - bulbX) + (scaledY - bulbY) * (scaledY - bulbY));
 
-      if ((distA <= sim.hitBoxRadius || distB <= sim.hitBoxRadius) && !bulbs[i].isBurnt) {
+      if (distA <= sim.hitBoxRadius || distB <= sim.hitBoxRadius) {
         bulbs[i].isDetached = !bulbs[i].isDetached;
         runPhysics();
         updateDisplay();
