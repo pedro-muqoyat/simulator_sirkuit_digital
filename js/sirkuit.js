@@ -793,6 +793,37 @@
     canvas.style.cursor = overBulb ? 'pointer' : 'default';
   }
 
+  function onCanvasPointerDown(e) {
+    e.preventDefault();
+
+    const rect    = canvas.getBoundingClientRect();
+    const cssX    = e.clientX - rect.left;
+    const cssY    = e.clientY - rect.top;
+    const scaledX = cssX * (canvas.width  / rect.width);
+    const scaledY = cssY * (canvas.height / rect.height);
+
+    const geo    = getGeometry();
+    const count  = sim.bulbCount;
+    const radius = 16;
+    const gap    = 50;
+    const totalW = count * radius * 2 + (count - 1) * gap;
+    const startX = geo.cx - totalW / 2 + radius;
+
+    for (let i = 0; i < count; i++) {
+      const bulbX   = startX + i * (radius * 2 + gap);
+      const bulbY   = geo.bulbY;
+      const distA   = Math.sqrt((cssX    - bulbX) * (cssX    - bulbX) + (cssY    - bulbY) * (cssY    - bulbY));
+      const distB   = Math.sqrt((scaledX - bulbX) * (scaledX - bulbX) + (scaledY - bulbY) * (scaledY - bulbY));
+
+      if ((distA <= sim.hitBoxRadius || distB <= sim.hitBoxRadius) && !bulbs[i].isBurnt) {
+        bulbs[i].isDetached = !bulbs[i].isDetached;
+        runPhysics();
+        updateDisplay();
+        break;
+      }
+    }
+  }
+
   function prosesInteraksiLampu(clientX, clientY) {
     const rect    = canvas.getBoundingClientRect();
     const x       = (clientX - rect.left) * (canvas.width  / rect.width);
@@ -2406,15 +2437,7 @@
     btnReset.addEventListener('click', onReset);
     if (!btnSakelar) throw new Error('btnSakelar element not found');
     btnSakelar.addEventListener('click', onSakelarToggle);
-    canvas.addEventListener('click', function(e) {
-      prosesInteraksiLampu(e.clientX, e.clientY);
-    });
-    canvas.addEventListener('touchstart', function(e) {
-      e.preventDefault();
-      if (e.touches && e.touches.length > 0) {
-        prosesInteraksiLampu(e.touches[0].clientX, e.touches[0].clientY);
-      }
-    }, { passive: false });
+    canvas.addEventListener('pointerdown', onCanvasPointerDown, { passive: false });
     canvas.addEventListener('mousemove', onCanvasMouseMove);
     window.addEventListener('resize', onResize);
 
