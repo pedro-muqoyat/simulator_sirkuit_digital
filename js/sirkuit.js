@@ -602,38 +602,38 @@
       ctx.lineCap  = 'round';
       ctx.lineJoin = 'round';
 
-      const batY   = bottom;
-      const firstY = bulbPositions[0].y;
+      const rx      = Math.round;
+      const rleft   = rx(left);
+      const rright  = rx(right);
+      const rbatY   = rx(bottom);
+      const rfirstY = rx(bulbPositions[0].y);
+      const rcx     = rx(geo.cx);
 
-      const buildParallelPath = function() {
+      const buildParallelPath = function(isGlow) {
         ctx.beginPath();
-        ctx.moveTo(left,  firstY);
-        ctx.lineTo(left,  batY);
-        ctx.lineTo(right, batY);
-        ctx.lineTo(right, firstY);
+        ctx.moveTo(rleft,  rfirstY);
+        ctx.lineTo(rleft,  rbatY);
+        ctx.lineTo(rright, rbatY);
+        ctx.lineTo(rright, rfirstY);
         for (let i = 0; i < bulbPositions.length; i++) {
-          const py = bulbPositions[i].y;
-          if (bulbs[i] && bulbs[i].isDetached) {
-            ctx.moveTo(left, py);
-            ctx.moveTo(right, py);
-          } else {
-            ctx.moveTo(left, py);
-            ctx.lineTo(geo.cx - radius - 4, py);
-            ctx.moveTo(geo.cx + radius + 4, py);
-            ctx.lineTo(right, py);
-          }
+          if (isGlow && bulbs[i] && bulbs[i].isDetached) continue;
+          const py = rx(bulbPositions[i].y);
+          ctx.moveTo(rleft,            py);
+          ctx.lineTo(rcx - radius - 4, py);
+          ctx.moveTo(rcx + radius + 4, py);
+          ctx.lineTo(rright,           py);
         }
       };
 
       ctx.strokeStyle = '#2e4a6a';
       ctx.lineWidth   = 6;
-      buildParallelPath();
+      buildParallelPath(false);
       ctx.stroke();
 
       if (sim.I > 0) {
         ctx.strokeStyle = 'rgba(79, 195, 247, 0.35)';
         ctx.lineWidth   = 10;
-        buildParallelPath();
+        buildParallelPath(true);
         ctx.stroke();
       }
 
@@ -761,8 +761,8 @@
     }
 
     const labelY = sim.circuitType === 'seri'
-      ? geo.top + radius + 8
-      : geo.bottom + radius + 8;
+      ? geo.bulbY + radius + 35
+      : 15;
 
     ctx.fillStyle    = '#90b4ce';
     ctx.font         = '12px sans-serif';
@@ -836,21 +836,25 @@
   }
 
   function drawPhysicsLabels(geo) {
-    const { cx, cy, top, bottom } = geo;
-    ctx.fillStyle    = 'rgba(144, 180, 206, 0.7)';
-    ctx.font         = '11px sans-serif';
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
+    const { cx, top, bottom } = geo;
 
     const label = sim.I > 0
       ? `I = ${sim.I.toFixed(3)} A`
       : 'I = 0 A (terbuka)';
 
-    const labelY = sim.circuitType === 'paralel'
-      ? top - 14
-      : cy;
+    ctx.save();
+    ctx.fillStyle    = 'rgba(144, 180, 206, 0.7)';
+    ctx.font         = 'bold 13px sans-serif';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
 
-    ctx.fillText(label, cx, labelY);
+    if (sim.circuitType === 'paralel') {
+      ctx.fillText(label, cx, bottom + 18);
+    } else {
+      ctx.fillText(label, cx, top - 30);
+    }
+
+    ctx.restore();
   }
 
   function render(timestamp) {
