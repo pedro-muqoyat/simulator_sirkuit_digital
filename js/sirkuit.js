@@ -604,23 +604,14 @@
       ctx.lineCap     = 'round';
       ctx.lineJoin    = 'round';
 
-      const batY     = bottom;
-      const firstY   = bulbPositions[0].y;
-      const lastY    = bulbPositions[bulbPositions.length - 1].y;
+      const batY   = bottom;
+      const firstY = bulbPositions[0].y;
 
       ctx.beginPath();
-      ctx.moveTo(left, batY);
+      ctx.moveTo(left,  firstY);
+      ctx.lineTo(left,  batY);
       ctx.lineTo(right, batY);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(left, firstY);
-      ctx.lineTo(left, batY);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(right, firstY);
-      ctx.lineTo(right, batY);
+      ctx.lineTo(right, firstY);
       ctx.stroke();
 
       for (let i = 0; i < bulbPositions.length; i++) {
@@ -640,18 +631,10 @@
         ctx.lineWidth   = 10;
 
         ctx.beginPath();
-        ctx.moveTo(left, batY);
+        ctx.moveTo(left,  firstY);
+        ctx.lineTo(left,  batY);
         ctx.lineTo(right, batY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(left, firstY);
-        ctx.lineTo(left, batY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(right, firstY);
-        ctx.lineTo(right, batY);
+        ctx.lineTo(right, firstY);
         ctx.stroke();
 
         for (let i = 0; i < bulbPositions.length; i++) {
