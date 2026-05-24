@@ -194,7 +194,17 @@
 
   function rebuildBulbs(count) {
     while (bulbs.length < count) {
-      bulbs.push({ isDetached: false, isBurnt: false, x: 0, y: 0 });
+      let filledSlot = false;
+      for (let i = 0; i < bulbs.length; i++) {
+        if (bulbs[i].isDetached) {
+          bulbs[i].isDetached = false;
+          filledSlot = true;
+          break;
+        }
+      }
+      if (!filledSlot) {
+        bulbs.push({ isDetached: false, isBurnt: false, x: 0, y: 0 });
+      }
     }
     while (bulbs.length > count) {
       bulbs.pop();
