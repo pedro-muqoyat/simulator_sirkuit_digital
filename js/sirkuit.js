@@ -126,15 +126,15 @@
         bulbPositions.push({ x: startX + i * (bulbRadius * 2 + bulbGap), y: bulbY });
       }
     } else {
-      const maxStepY = Math.floor((bottom - 80 - 45) / Math.max(bulbCount - 1, 1));
-      const stepY    = Math.max(50, maxStepY);
-      const firstY   = 45;
-      const batY     = bottom;
+      const SLOT_HEIGHT = 60;
+      const firstY      = 45;
+      const batY        = bottom;
 
       batteryY = batY;
       bulbY    = firstY;
       for (let i = 0; i < bulbCount; i++) {
-        bulbPositions.push({ x: cx, y: firstY + i * stepY });
+        const slotY = Math.min(firstY + i * SLOT_HEIGHT, bottom - bulbRadius - 4);
+        bulbPositions.push({ x: cx, y: slotY });
       }
     }
 
@@ -746,18 +746,19 @@
 
   function drawBulbs(geo) {
     const { bulbPositions, cx, bulbY } = geo;
-    const count        = sim.bulbCount;
-    const radius       = 16;
+    const count         = sim.bulbCount;
+    const radius        = 16;
     const DETACH_OFFSET = 20;
 
     for (let i = 0; i < count; i++) {
       const pos = bulbPositions[i];
       if (!pos) continue;
-      const bx = pos.x;
-      const by = pos.y;
+      const bx          = pos.x;
+      const by          = pos.y;
+      const detachedY   = Math.min(by + DETACH_OFFSET, geo.bottom - 45);
 
       if (bulbs[i] && bulbs[i].isDetached) {
-        drawDetachedBulb(bx, by + DETACH_OFFSET, radius);
+        drawDetachedBulb(bx, detachedY, radius);
       } else if ((bulbs[i] && bulbs[i].isBurnt) || sim.bulbState === 'overload') {
         try {
           drawBrokenBulb(bx, by, radius);
