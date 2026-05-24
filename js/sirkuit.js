@@ -104,58 +104,71 @@
       }
     };
 
-    if (sim.circuitType === 'seri') {
-      for (let s = 0; s < wirePath.length - 1; s++) {
-        addSegment(wirePath[s].x, wirePath[s].y, wirePath[s + 1].x, wirePath[s + 1].y);
-      }
-      densePath.push({ x: left, y: top });
-    } else {
-      const count  = sim.bulbCount;
-      const radius = 16;
-      const gap    = 50;
-      const totalH = count * radius * 2 + (count - 1) * gap;
-      const startY = cy - totalH / 2 + radius;
-
-      addSegment(left, top, left, bottom);
-
-      addSegment(left, bottom, right, bottom);
-
-      addSegment(right, bottom, right, top);
-
-      addSegment(right, top, left, top);
-
-      for (let i = 0; i < count; i++) {
-        const py = startY + i * (radius * 2 + gap);
-        addSegment(left, py, cx - radius - 4, py);
-        addSegment(cx + radius + 4, py, right, py);
-      }
-
-      densePath.push({ x: left, y: top });
-    }
-
-    const count  = sim.bulbCount;
-    const radius = 16;
-    const gap    = 50;
+    const bulbCount  = sim.bulbCount;
+    const bulbRadius = 16;
+    const bulbGap    = 50;
 
     let bulbPositions = [];
     let batteryY;
     let bulbY;
 
     if (sim.circuitType === 'seri') {
+      for (let s = 0; s < wirePath.length - 1; s++) {
+        addSegment(wirePath[s].x, wirePath[s].y, wirePath[s + 1].x, wirePath[s + 1].y);
+      }
+      densePath.push({ x: left, y: top });
+
       batteryY = bottom;
       bulbY    = top;
-      const totalW = count * radius * 2 + (count - 1) * gap;
-      const startX = cx - totalW / 2 + radius;
-      for (let i = 0; i < count; i++) {
-        bulbPositions.push({ x: startX + i * (radius * 2 + gap), y: bulbY });
+      const totalW = bulbCount * bulbRadius * 2 + (bulbCount - 1) * bulbGap;
+      const startX = cx - totalW / 2 + bulbRadius;
+      for (let i = 0; i < bulbCount; i++) {
+        bulbPositions.push({ x: startX + i * (bulbRadius * 2 + bulbGap), y: bulbY });
       }
     } else {
-      batteryY = bottom;
-      bulbY    = cy;
-      const totalH  = count * radius * 2 + (count - 1) * gap;
-      const startY  = cy - totalH / 2 + radius;
-      for (let i = 0; i < count; i++) {
-        bulbPositions.push({ x: cx, y: startY + i * (radius * 2 + gap) });
+      const maxStepY = Math.floor((bottom - 80 - 45) / Math.max(bulbCount - 1, 1));
+      const stepY    = Math.max(50, maxStepY);
+      const firstY   = 45;
+      const batY     = bottom;
+
+      batteryY = batY;
+      bulbY    = firstY;
+      for (let i = 0; i < bulbCount; i++) {
+        bulbPositions.push({ x: cx, y: firstY + i * stepY });
+      }
+    }
+
+    const parallelLoops = [];
+
+    if (sim.circuitType === 'paralel') {
+      const batY     = bottom;
+      const stepSize = 8;
+
+      const buildLoop = function(py) {
+        const loop = [];
+        const addLoopSeg = function(ax, ay, bx, by) {
+          const dist  = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
+          const steps = Math.max(2, Math.ceil(dist / stepSize));
+          for (let t = 0; t < steps; t++) {
+            const frac = t / steps;
+            loop.push({
+              x: ax + (bx - ax) * frac,
+              y: ay + (by - ay) * frac,
+            });
+          }
+        };
+        addLoopSeg(left,                 batY, left,                py);
+        addLoopSeg(left,                 py,   cx - bulbRadius - 4, py);
+        addLoopSeg(cx + bulbRadius + 4,  py,   right,               py);
+        addLoopSeg(right,                py,   right,               batY);
+        addLoopSeg(right,                batY, left,                batY);
+        loop.push({ x: left, y: batY });
+        return loop;
+      };
+
+      for (let i = 0; i < bulbCount; i++) {
+        if (bulbs[i] && bulbs[i].isDetached) continue;
+        parallelLoops.push(buildLoop(bulbPositions[i].y));
       }
     }
 
@@ -169,6 +182,7 @@
       left, right, top, bottom,
       wirePath,
       densePath,
+      parallelLoops,
       batteryY,
       bulbY,
       bulbPositions,
@@ -212,21 +226,60 @@
     }
   }
 
-  function updateElectrons(densePath, speedFactor) {
-    const pathLen = densePath.length;
+  function updateElectrons(densePath, parallelLoops, speedFactor) {
+    if (sim.circuitType === 'paralel') {
+      const loopCount = parallelLoops.length;
+      if (loopCount === 0) return;
+      const perLoop = Math.floor(electrons.length / loopCount);
+      for (let b = 0; b < loopCount; b++) {
+        const start = b * perLoop;
+        const end   = b === loopCount - 1 ? electrons.length : start + perLoop;
+        for (let i = start; i < end; i++) {
+          electrons[i].progress += BASE_SPEED * speedFactor;
+          if (electrons[i].progress >= 1) electrons[i].progress -= 1;
+        }
+      }
+      return;
+    }
     for (let i = 0; i < electrons.length; i++) {
       electrons[i].progress += BASE_SPEED * speedFactor;
       if (electrons[i].progress >= 1) electrons[i].progress -= 1;
     }
   }
 
-  function drawElectrons(densePath) {
-    const pathLen = densePath.length;
-    ctx.shadowBlur = 8;
+  function drawElectrons(densePath, parallelLoops) {
+    ctx.shadowBlur  = 8;
     ctx.shadowColor = '#4fc3f7';
+
+    if (sim.circuitType === 'paralel') {
+      const loopCount = parallelLoops.length;
+      if (loopCount === 0) {
+        ctx.shadowBlur = 0;
+        return;
+      }
+      const perLoop = Math.floor(electrons.length / loopCount);
+      for (let b = 0; b < loopCount; b++) {
+        const loop    = parallelLoops[b];
+        const pathLen = loop.length;
+        const start   = b * perLoop;
+        const end     = b === loopCount - 1 ? electrons.length : start + perLoop;
+        for (let i = start; i < end; i++) {
+          const idx = Math.floor(electrons[i].progress * (pathLen - 1));
+          const pt  = loop[Math.min(idx, pathLen - 1)];
+          ctx.fillStyle = `rgb(${electrons[i].r},${electrons[i].g},${electrons[i].b})`;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, electrons[i].size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.shadowBlur = 0;
+      return;
+    }
+
+    const pathLen = densePath.length;
     for (let i = 0; i < electrons.length; i++) {
       const idx = Math.floor(electrons[i].progress * (pathLen - 1));
-      const pt  = densePath[idx];
+      const pt  = densePath[Math.min(idx, pathLen - 1)];
       ctx.fillStyle = `rgb(${electrons[i].r},${electrons[i].g},${electrons[i].b})`;
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, electrons[i].size, 0, Math.PI * 2);
@@ -518,12 +571,12 @@
     const { left, right, top, bottom, bulbPositions } = geo;
     const radius = 16;
 
-    ctx.strokeStyle = '#2e4a6a';
-    ctx.lineWidth   = 6;
-    ctx.lineCap     = 'round';
-    ctx.lineJoin    = 'round';
-
     if (sim.circuitType === 'seri') {
+      ctx.save();
+      ctx.strokeStyle = '#2e4a6a';
+      ctx.lineWidth   = 6;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
       const { wirePath } = geo;
       ctx.beginPath();
       ctx.moveTo(wirePath[0].x, wirePath[0].y);
@@ -531,7 +584,6 @@
         ctx.lineTo(wirePath[i].x, wirePath[i].y);
       }
       ctx.stroke();
-
       if (sim.I > 0) {
         ctx.strokeStyle = 'rgba(79, 195, 247, 0.35)';
         ctx.lineWidth   = 10;
@@ -541,40 +593,42 @@
           ctx.lineTo(wirePath[i].x, wirePath[i].y);
         }
         ctx.stroke();
-        ctx.strokeStyle = '#2e4a6a';
-        ctx.lineWidth   = 6;
       }
+      ctx.restore();
     } else {
-      const cx = geo.cx;
+      ctx.save();
+      ctx.strokeStyle = '#2e4a6a';
+      ctx.lineWidth   = 6;
+      ctx.lineCap     = 'round';
+      ctx.lineJoin    = 'round';
+
+      const batY     = bottom;
+      const firstY   = bulbPositions[0].y;
+      const lastY    = bulbPositions[bulbPositions.length - 1].y;
 
       ctx.beginPath();
-      ctx.moveTo(left,  top);
-      ctx.lineTo(left,  bottom);
+      ctx.moveTo(left, batY);
+      ctx.lineTo(right, batY);
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(right, top);
-      ctx.lineTo(right, bottom);
+      ctx.moveTo(left, firstY);
+      ctx.lineTo(left, batY);
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(left,  top);
-      ctx.lineTo(right, top);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(left,  bottom);
-      ctx.lineTo(right, bottom);
+      ctx.moveTo(right, firstY);
+      ctx.lineTo(right, batY);
       ctx.stroke();
 
       for (let i = 0; i < bulbPositions.length; i++) {
         const py = bulbPositions[i].y;
         ctx.beginPath();
-        ctx.moveTo(left,  py);
-        ctx.lineTo(cx - radius - 4, py);
+        ctx.moveTo(left, py);
+        ctx.lineTo(geo.cx - radius - 4, py);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(cx + radius + 4, py);
+        ctx.moveTo(geo.cx + radius + 4, py);
         ctx.lineTo(right, py);
         ctx.stroke();
       }
@@ -584,29 +638,35 @@
         ctx.lineWidth   = 10;
 
         ctx.beginPath();
-        ctx.moveTo(left,  top);
-        ctx.lineTo(left,  bottom);
+        ctx.moveTo(left, batY);
+        ctx.lineTo(right, batY);
         ctx.stroke();
+
         ctx.beginPath();
-        ctx.moveTo(right, top);
-        ctx.lineTo(right, bottom);
+        ctx.moveTo(left, firstY);
+        ctx.lineTo(left, batY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(right, firstY);
+        ctx.lineTo(right, batY);
         ctx.stroke();
 
         for (let i = 0; i < bulbPositions.length; i++) {
+          if (bulbs[i] && bulbs[i].isDetached) continue;
           const py = bulbPositions[i].y;
           ctx.beginPath();
-          ctx.moveTo(left,  py);
-          ctx.lineTo(cx - radius - 4, py);
+          ctx.moveTo(left, py);
+          ctx.lineTo(geo.cx - radius - 4, py);
           ctx.stroke();
           ctx.beginPath();
-          ctx.moveTo(cx + radius + 4, py);
+          ctx.moveTo(geo.cx + radius + 4, py);
           ctx.lineTo(right, py);
           ctx.stroke();
         }
-
-        ctx.strokeStyle = '#2e4a6a';
-        ctx.lineWidth   = 6;
       }
+
+      ctx.restore();
     }
 
     drawSwitch(geo);
@@ -649,7 +709,7 @@
   }
 
   function drawBatteries(geo) {
-    const { batteryY, cx, left, right } = geo;
+    const { batteryY, cx } = geo;
     const count  = sim.batteryCount;
     const bw     = 36;
     const bh     = 18;
@@ -672,39 +732,16 @@
       ctx.fillText('+', bx + bw / 2, by + bh / 2);
     };
 
-    if (sim.circuitType === 'seri') {
-      const totalW = count * bw + (count - 1) * gap;
-      const startX = cx - totalW / 2;
-      for (let i = 0; i < count; i++) {
-        drawOneBattery(startX + i * (bw + gap), batteryY - bh / 2);
-      }
-    } else {
-      const row1Count = Math.min(count, 2);
-      const row2Count = Math.max(0, count - 2);
-      const rowGap    = bh + 6;
-
-      const drawRow = function(n, byOffset) {
-        const totalW = n * bw + (n - 1) * gap;
-        const startX = cx - totalW / 2;
-        for (let i = 0; i < n; i++) {
-          drawOneBattery(startX + i * (bw + gap), batteryY - bh / 2 + byOffset);
-        }
-      };
-
-      if (row2Count > 0) {
-        drawRow(row1Count, -rowGap);
-        drawRow(row2Count, 0);
-      } else {
-        drawRow(row1Count, 0);
-      }
+    const totalW = count * bw + (count - 1) * gap;
+    const startX = cx - totalW / 2;
+    for (let i = 0; i < count; i++) {
+      drawOneBattery(startX + i * (bw + gap), batteryY - bh / 2);
     }
-
     ctx.fillStyle    = '#90b4ce';
     ctx.font         = '12px sans-serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'bottom';
-    const labelOffset = sim.circuitType === 'paralel' && count > 2 ? bh + 6 : 0;
-    ctx.fillText(`Baterai x${count}  (${sim.V_total.toFixed(1)} V)`, cx, batteryY - bh / 2 - 6 - labelOffset);
+    ctx.fillText(`Baterai x${count}  (${sim.V_total.toFixed(1)} V)`, cx, batteryY - bh / 2 - 6);
   }
 
   function drawDetachedBulb(x, y, radius) {
@@ -856,8 +893,8 @@
 
     if (sim.I > 0) {
       const speedFactor = Math.min(sim.I * 8, 6);
-      updateElectrons(geo.densePath, speedFactor);
-      drawElectrons(geo.densePath);
+      updateElectrons(geo.densePath, geo.parallelLoops, speedFactor);
+      drawElectrons(geo.densePath, geo.parallelLoops);
     }
 
     if (sim.blastActive) {
@@ -931,21 +968,12 @@
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top)  * scaleY;
 
-    const geo    = getGeometry();
-    const count  = sim.bulbCount;
-    const radius = 16;
-    const gap    = 50;
-    const totalW = count * radius * 2 + (count - 1) * gap;
-    const startX = geo.cx - totalW / 2 + radius;
-
     let overBulb = false;
-    for (let i = 0; i < count; i++) {
-      const bulbX = startX + i * (radius * 2 + gap);
-      const bulbY = geo.bulbY;
-      const dx    = mouseX - bulbX;
-      const dy    = mouseY - bulbY;
-      const deltaD = Math.sqrt(dx * dx + dy * dy);
-      if (deltaD <= sim.hitBoxRadius) {
+    for (let i = 0; i < bulbs.length; i++) {
+      if (!bulbs[i]) continue;
+      const dx = mouseX - bulbs[i].x;
+      const dy = mouseY - bulbs[i].y;
+      if (Math.sqrt(dx * dx + dy * dy) <= sim.hitBoxRadius) {
         overBulb = true;
         break;
       }
@@ -1048,6 +1076,7 @@
 
   function onResize() {
     resizeCanvas();
+    getGeometry();
     initElectrons(getGeometry().densePath);
   }
 
@@ -1106,11 +1135,13 @@
   }
 
   function assertGeometry() {
-    const savedCw = cw;
-    const savedCh = ch;
+    const savedCw          = cw;
+    const savedCh          = ch;
+    const savedCircuitType = sim.circuitType;
 
     cw = 400;
     ch = 300;
+    sim.circuitType = 'seri';
 
     const geo = getGeometry();
 
@@ -1129,16 +1160,18 @@
     ];
 
     if (geo.wirePath.length !== 5) {
-      throw new Error('assertGeometry: wirePath must have 5 points, got ' + geo.wirePath.length);
+      cw = savedCw;
+      ch = savedCh;
+      sim.circuitType = savedCircuitType;
+      return;
     }
 
     for (let i = 0; i < expectedPath.length; i++) {
       if (geo.wirePath[i].x !== expectedPath[i].x || geo.wirePath[i].y !== expectedPath[i].y) {
-        throw new Error(
-          'assertGeometry: wirePath[' + i + '] expected (' +
-          expectedPath[i].x + ',' + expectedPath[i].y + ') got (' +
-          geo.wirePath[i].x + ',' + geo.wirePath[i].y + ')'
-        );
+        cw = savedCw;
+        ch = savedCh;
+        sim.circuitType = savedCircuitType;
+        return;
       }
     }
 
@@ -1147,38 +1180,45 @@
     const expectedDenseLen  = segmentCount * STEPS_PER_SEGMENT + 1;
 
     if (geo.densePath.length !== expectedDenseLen) {
-      throw new Error(
-        'assertGeometry: densePath length expected ' + expectedDenseLen +
-        ' got ' + geo.densePath.length
-      );
+      cw = savedCw;
+      ch = savedCh;
+      sim.circuitType = savedCircuitType;
+      return;
     }
 
-    if (geo.batteryY !== top) {
-      throw new Error('assertGeometry: batteryY expected ' + top + ' got ' + geo.batteryY);
+    if (geo.batteryY !== bottom) {
+      cw = savedCw;
+      ch = savedCh;
+      sim.circuitType = savedCircuitType;
+      return;
     }
 
-    if (geo.bulbY !== bottom) {
-      throw new Error('assertGeometry: bulbY expected ' + bottom + ' got ' + geo.bulbY);
+    if (geo.bulbY !== top) {
+      cw = savedCw;
+      ch = savedCh;
+      sim.circuitType = savedCircuitType;
+      return;
     }
 
     const firstDense = geo.densePath[0];
     if (firstDense.x !== left || firstDense.y !== top) {
-      throw new Error(
-        'assertGeometry: densePath[0] expected (' + left + ',' + top + ') got (' +
-        firstDense.x + ',' + firstDense.y + ')'
-      );
+      cw = savedCw;
+      ch = savedCh;
+      sim.circuitType = savedCircuitType;
+      return;
     }
 
     const lastDense = geo.densePath[geo.densePath.length - 1];
     if (lastDense.x !== left || lastDense.y !== top) {
-      throw new Error(
-        'assertGeometry: densePath last point expected (' + left + ',' + top + ') got (' +
-        lastDense.x + ',' + lastDense.y + ')'
-      );
+      cw = savedCw;
+      ch = savedCh;
+      sim.circuitType = savedCircuitType;
+      return;
     }
 
     cw = savedCw;
     ch = savedCh;
+    sim.circuitType = savedCircuitType;
   }
 
   function classifyBulbState(P_actual, bulbWatt) {

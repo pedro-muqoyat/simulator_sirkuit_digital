@@ -41,15 +41,17 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  height: 100%;
 }
 
 body {
   font-family: var(--font-base);
   background-color: var(--clr-bg);
   color: var(--clr-text);
+  height: 100%;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -78,25 +80,25 @@ body {
 }
 
 .app-main {
-  flex: 1;
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: 1fr auto auto;
   gap: var(--sp-md);
   padding: var(--sp-md);
   width: 100%;
   max-width: 1200px;
-  margin: 0 auto;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 @media (min-width: 640px) {
   .app-main {
     grid-template-columns: 1fr 320px;
-    grid-template-rows: auto auto;
+    grid-template-rows: 1fr auto;
     grid-template-areas:
       "canvas  controls"
       "info    controls";
-    align-items: start;
+    align-items: stretch;
   }
 
   .canvas-section  { grid-area: canvas; }
@@ -119,15 +121,18 @@ body {
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-card);
-  height: 300px;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+  height: 100%;
 }
 
-@media (min-width: 640px) {
-  .canvas-section { height: 340px; }
+@media (min-width: 768px) {
+  .canvas-section { grid-area: canvas; }
 }
 
 @media (min-width: 960px) {
-  .canvas-section { height: 400px; }
+  .canvas-section { grid-area: canvas; }
 }
 
 #circuitCanvas {
@@ -516,7 +521,7 @@ body {
       "canvas  controls"
       "info    controls";
   }
-  .canvas-section { grid-area: canvas; height: 200px; }
+  .canvas-section { grid-area: canvas; min-height: 200px; }
   .info-panel     { grid-area: info; }
   .control-panel  { grid-area: controls; }
 }
