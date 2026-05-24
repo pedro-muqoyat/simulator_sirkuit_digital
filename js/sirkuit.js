@@ -599,56 +599,42 @@
       ctx.restore();
     } else {
       ctx.save();
-      ctx.strokeStyle = '#2e4a6a';
-      ctx.lineWidth   = 6;
-      ctx.lineCap     = 'round';
-      ctx.lineJoin    = 'round';
+      ctx.lineCap  = 'round';
+      ctx.lineJoin = 'round';
 
       const batY   = bottom;
       const firstY = bulbPositions[0].y;
 
-      ctx.beginPath();
-      ctx.moveTo(left,  firstY);
-      ctx.lineTo(left,  batY);
-      ctx.lineTo(right, batY);
-      ctx.lineTo(right, firstY);
-      ctx.stroke();
-
-      for (let i = 0; i < bulbPositions.length; i++) {
-        const py = bulbPositions[i].y;
-        ctx.beginPath();
-        ctx.moveTo(left, py);
-        ctx.lineTo(geo.cx - radius - 4, py);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(geo.cx + radius + 4, py);
-        ctx.lineTo(right, py);
-        ctx.stroke();
-      }
-
-      if (sim.I > 0) {
-        ctx.strokeStyle = 'rgba(79, 195, 247, 0.35)';
-        ctx.lineWidth   = 10;
-
+      const buildParallelPath = function() {
         ctx.beginPath();
         ctx.moveTo(left,  firstY);
         ctx.lineTo(left,  batY);
         ctx.lineTo(right, batY);
         ctx.lineTo(right, firstY);
-        ctx.stroke();
-
         for (let i = 0; i < bulbPositions.length; i++) {
-          if (bulbs[i] && bulbs[i].isDetached) continue;
           const py = bulbPositions[i].y;
-          ctx.beginPath();
-          ctx.moveTo(left, py);
-          ctx.lineTo(geo.cx - radius - 4, py);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(geo.cx + radius + 4, py);
-          ctx.lineTo(right, py);
-          ctx.stroke();
+          if (bulbs[i] && bulbs[i].isDetached) {
+            ctx.moveTo(left, py);
+            ctx.moveTo(right, py);
+          } else {
+            ctx.moveTo(left, py);
+            ctx.lineTo(geo.cx - radius - 4, py);
+            ctx.moveTo(geo.cx + radius + 4, py);
+            ctx.lineTo(right, py);
+          }
         }
+      };
+
+      ctx.strokeStyle = '#2e4a6a';
+      ctx.lineWidth   = 6;
+      buildParallelPath();
+      ctx.stroke();
+
+      if (sim.I > 0) {
+        ctx.strokeStyle = 'rgba(79, 195, 247, 0.35)';
+        ctx.lineWidth   = 10;
+        buildParallelPath();
+        ctx.stroke();
       }
 
       ctx.restore();
