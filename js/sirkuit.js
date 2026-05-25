@@ -76,12 +76,17 @@
   function getGeometry() {
     const cx  = cw / 2;
     const cy  = ch / 2;
-    const pad = Math.min(cw, ch) * 0.12;
 
-    const left   = pad;
-    const right  = cw - pad;
-    const top    = pad;
-    const bottom = ch - pad;
+    const rawPad = Math.min(cw, ch) * 0.05;
+    const pad    = Math.max(15, rawPad);
+    const left   = pad + 10;
+    const right  = cw - pad - 10;
+    const top    = pad + 35;
+    const bottom = ch - pad - 35;
+
+    const rawScale     = ch / 600;
+    const heightScale  = Math.max(Math.min(rawScale, 1.0), 0.75);
+    const scaledRadius = Math.round(16 * heightScale);
 
     const wirePath = [
       { x: left,  y: top    },
@@ -105,12 +110,13 @@
     };
 
     const bulbCount  = sim.bulbCount;
-    const bulbRadius = 16;
-    const bulbGap    = 50;
+    const bulbRadius = scaledRadius;
+    const bulbGap    = Math.round(50 * heightScale);
 
     let bulbPositions = [];
     let batteryY;
     let bulbY;
+    let parallelSlot4Y = bottom;
 
     if (sim.circuitType === 'seri') {
       for (let s = 0; s < wirePath.length - 1; s++) {
@@ -126,15 +132,17 @@
         bulbPositions.push({ x: startX + i * (bulbRadius * 2 + bulbGap), y: bulbY });
       }
     } else {
-      const SLOT_HEIGHT = 60;
-      const firstY      = 45;
-      const batY        = bottom;
+      const maxStepY        = ((bottom - 70) - top) / 3;
+      const stepY           = Math.min(65, maxStepY);
+      const totalBulbsHeight = 3 * stepY;
+      const centerZone      = top + ((bottom - 70) - top) / 2;
+      const firstY          = centerZone - totalBulbsHeight / 2;
+      parallelSlot4Y        = firstY + 3 * stepY;
 
-      batteryY = batY;
+      batteryY = bottom;
       bulbY    = firstY;
       for (let i = 0; i < bulbCount; i++) {
-        const slotY = Math.min(firstY + i * SLOT_HEIGHT, bottom - bulbRadius - 4);
-        bulbPositions.push({ x: cx, y: slotY });
+        bulbPositions.push({ x: cx, y: firstY + i * stepY });
       }
     }
 
@@ -171,6 +179,8 @@
       }
     }
 
+    const scaledHitBox = Math.max(30, 40 * heightScale);
+
     for (let i = 0; i < bulbs.length && i < bulbPositions.length; i++) {
       bulbs[i].x = bulbPositions[i].x;
       bulbs[i].y = bulbPositions[i].y;
@@ -185,6 +195,9 @@
       batteryY,
       bulbY,
       bulbPositions,
+      scaledRadius,
+      scaledHitBox,
+      parallelSlot4Y,
     };
   }
 
@@ -607,8 +620,9 @@
     const { left, right, top, bottom, bulbPositions } = geo;
     const radius = 16;
 
+    ctx.save();
+
     if (sim.circuitType === 'seri') {
-      ctx.save();
       ctx.strokeStyle = '#2e4a6a';
       ctx.lineWidth   = 6;
       ctx.lineCap     = 'round';
@@ -630,9 +644,7 @@
         }
         ctx.stroke();
       }
-      ctx.restore();
     } else {
-      ctx.save();
       ctx.lineCap  = 'round';
       ctx.lineJoin = 'round';
 
@@ -670,10 +682,9 @@
         buildParallelPath(true);
         ctx.stroke();
       }
-
-      ctx.restore();
     }
 
+    ctx.restore();
     drawSwitch(geo);
   }
 
@@ -682,9 +693,7 @@
     let   switchMidY = (geo.top + geo.bottom) / 2;
 
     if (sim.circuitType === 'paralel') {
-      const SLOT_HEIGHT  = 60;
-      const slot4Y       = 45 + 3 * SLOT_HEIGHT;
-      switchMidY = (slot4Y + geo.bottom) / 2;
+      switchMidY = (geo.parallelSlot4Y + geo.bottom) / 2;
     }
 
     const termRadius = 4;
@@ -765,7 +774,7 @@
     ctx.font         = '12px sans-serif';
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(`Baterai x${count}  (${sim.V_total.toFixed(1)} V)`, cx, batteryY - bh / 2 - 6);
+    ctx.fillText(`Baterai x${count}  (${sim.V_total.toFixed(1)} V)`, cx, batteryY - bh / 2 - 12);
     ctx.shadowBlur  = 0;
     ctx.shadowColor = 'transparent';
   }
@@ -790,10 +799,11 @@
   }
 
   function drawBulbs(geo) {
-    const { bulbPositions, cx, bulbY } = geo;
+    const { bulbPositions, cx, bulbY, scaledRadius } = geo;
     const count         = sim.bulbCount;
-    const radius        = 16;
-    const DETACH_OFFSET = 20;
+    const radius        = scaledRadius || 16;
+    const heightScale   = Math.min(ch / 600, 1.0);
+    const DETACH_OFFSET = Math.round(20 * heightScale);
     const baseW         = 10;
     const baseH         = 6;
 
@@ -946,9 +956,9 @@
     ctx.textBaseline = 'middle';
 
     if (sim.circuitType === 'paralel') {
-      ctx.fillText(label, cx, bottom + 32);
+      ctx.fillText(label, cx, bottom + 25);
     } else {
-      ctx.fillText(label, cx, top - 30);
+      ctx.fillText(label, cx, top - 25);
     }
 
     ctx.restore();
@@ -1072,16 +1082,17 @@
     const scaledX = cssX * (canvas.width  / rect.width);
     const scaledY = cssY * (canvas.height / rect.height);
 
+    const geo   = getGeometry();
     const count = sim.bulbCount;
 
     for (let i = 0; i < count; i++) {
       if (!bulbs[i] || bulbs[i].isBurnt) continue;
-      const bulbX  = bulbs[i].x || 0;
-      const bulbY  = bulbs[i].y || 0;
-      const distA  = Math.sqrt((cssX    - bulbX) * (cssX    - bulbX) + (cssY    - bulbY) * (cssY    - bulbY));
-      const distB  = Math.sqrt((scaledX - bulbX) * (scaledX - bulbX) + (scaledY - bulbY) * (scaledY - bulbY));
+      const bulbX = bulbs[i].x || 0;
+      const bulbY = bulbs[i].y || 0;
+      const distA = Math.sqrt((cssX    - bulbX) * (cssX    - bulbX) + (cssY    - bulbY) * (cssY    - bulbY));
+      const distB = Math.sqrt((scaledX - bulbX) * (scaledX - bulbX) + (scaledY - bulbY) * (scaledY - bulbY));
 
-      if (distA <= sim.hitBoxRadius || distB <= sim.hitBoxRadius) {
+      if (distA <= geo.scaledHitBox || distB <= geo.scaledHitBox) {
         bulbs[i].isDetached = !bulbs[i].isDetached;
         runPhysics();
         updateDisplay();
