@@ -583,3 +583,13 @@ body {
   outline: 3px solid var(--clr-accent);
   outline-offset: 3px;
 }
+
+@media (max-width: 600px) {
+  .canvas-section {
+    height: auto !important;
+    min-height: 500px !important;
+  }
+  #circuitCanvas {
+    height: 100% !important;
+  }
+}

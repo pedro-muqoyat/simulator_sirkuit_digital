@@ -84,17 +84,12 @@
     const top    = pad + 35;
     const bottom = ch - pad - 35;
 
-    const rawScale     = ch / 600;
-    const heightScale  = Math.max(Math.min(rawScale, 1.0), 0.75);
+    const rawScale     = cw / 600;
+    const heightScale  = Math.max(Math.min(rawScale, 1.0), 0.85);
     const scaledRadius = Math.round(16 * heightScale);
 
-    const wirePath = [
-      { x: left,  y: top    },
-      { x: right, y: top    },
-      { x: right, y: bottom },
-      { x: left,  y: bottom },
-      { x: left,  y: top    },
-    ];
+    let wirePath = [];
+    let visualSegments = null;
 
     const densePath = [];
     const STEPS_PER_SEGMENT = 40;
@@ -119,17 +114,51 @@
     let parallelSlot4Y = bottom;
 
     if (sim.circuitType === 'seri') {
+      batteryY = bottom;
+      bulbY    = top;
+      const totalW = bulbCount * scaledRadius * 2 + (bulbCount - 1) * bulbGap;
+      const startX = cx - totalW / 2 + scaledRadius;
+      for (let i = 0; i < bulbCount; i++) {
+        bulbPositions.push({ x: startX + i * (scaledRadius * 2 + bulbGap), y: bulbY });
+      }
+
+      wirePath = [
+        { x: cx,    y: bottom },
+        { x: left,  y: bottom },
+        { x: left,  y: top    },
+        { x: right, y: top    },
+        { x: right, y: bottom },
+        { x: cx,    y: bottom },
+      ];
+
+      densePath.length = 0;
       for (let s = 0; s < wirePath.length - 1; s++) {
         addSegment(wirePath[s].x, wirePath[s].y, wirePath[s + 1].x, wirePath[s + 1].y);
       }
-      densePath.push({ x: left, y: top });
+      densePath.push({ x: wirePath[0].x, y: wirePath[0].y });
 
-      batteryY = bottom;
-      bulbY    = top;
-      const totalW = bulbCount * bulbRadius * 2 + (bulbCount - 1) * bulbGap;
-      const startX = cx - totalW / 2 + bulbRadius;
-      for (let i = 0; i < bulbCount; i++) {
-        bulbPositions.push({ x: startX + i * (bulbRadius * 2 + bulbGap), y: bulbY });
+      if (bulbCount > 0) {
+        const gap = 6;
+        visualSegments = [
+          [
+            { x: cx,   y: bottom },
+            { x: left, y: bottom },
+            { x: left, y: top    },
+            { x: bulbPositions[0].x - scaledRadius - gap, y: top },
+          ],
+        ];
+        for (let i = 0; i < bulbCount - 1; i++) {
+          visualSegments.push([
+            { x: bulbPositions[i].x + scaledRadius + gap,     y: top },
+            { x: bulbPositions[i + 1].x - scaledRadius - gap, y: top },
+          ]);
+        }
+        visualSegments.push([
+          { x: bulbPositions[bulbCount - 1].x + scaledRadius + gap, y: top    },
+          { x: right, y: top    },
+          { x: right, y: bottom },
+          { x: cx,    y: bottom },
+        ]);
       }
     } else {
       const maxStepY        = ((bottom - 70) - top) / 3;
@@ -166,8 +195,8 @@
           }
         };
         addLoopSeg(left,                batY,  left,                py);
-        addLoopSeg(left,                py,    cx - bulbRadius - 4, py);
-        addLoopSeg(cx + bulbRadius + 4, py,    right,               py);
+        addLoopSeg(left,                py,    cx - bulbRadius - 6, py);
+        addLoopSeg(cx + bulbRadius + 6, py,    right,               py);
         addLoopSeg(right,               py,    right,               batY);
         addLoopSeg(right,               batY,  left,                batY);
         return loop;
@@ -198,6 +227,7 @@
       scaledRadius,
       scaledHitBox,
       parallelSlot4Y,
+      visualSegments,
     };
   }
 
@@ -270,9 +300,38 @@
     }
   }
 
-  function drawElectrons(densePath, parallelLoops) {
+  function drawElectrons(densePath, parallelLoops, geo) {
     if (sim.I === 0) return;
     if (!sim.isSakelarTertutup) return;
+
+    const resolvedGeo     = geo || getGeometry();
+    const bulbPositions   = resolvedGeo.bulbPositions;
+    const maskRadius      = resolvedGeo.scaledRadius || 16;
+
+    const isInsideBulb = function(px, py) {
+      for (let b = 0; b < bulbPositions.length; b++) {
+        const dx = px - bulbPositions[b].x;
+        const dy = py - bulbPositions[b].y;
+        if (Math.sqrt(dx * dx + dy * dy) < maskRadius) return true;
+      }
+      return false;
+    };
+
+    const isInsideBattery = function(pt) {
+      if (!resolvedGeo) return false;
+      const count  = sim.batteryCount;
+      const bw     = 45;
+      const bh     = 24;
+      const bgap   = 10;
+      const totalW = count * bw + (count - 1) * bgap;
+      const startX = resolvedGeo.cx - totalW / 2;
+      const batY   = resolvedGeo.batteryY - bh / 2;
+      for (let i = 0; i < count; i++) {
+        const bx = startX + i * (bw + bgap);
+        if (pt.x >= bx && pt.x <= bx + bw && pt.y >= batY && pt.y <= batY + bh) return true;
+      }
+      return false;
+    };
 
     if (sim.circuitType === 'paralel') {
       const loopCount = parallelLoops.length;
@@ -288,6 +347,8 @@
         for (let i = start; i < end; i++) {
           const idx = Math.floor(electrons[i].progress * (pathLen - 1));
           const pt  = loop[Math.min(idx, pathLen - 1)];
+          if (isInsideBulb(pt.x, pt.y)) continue;
+          if (isInsideBattery(pt)) continue;
           ctx.fillStyle = `rgb(${electrons[i].r},${electrons[i].g},${electrons[i].b})`;
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, electrons[i].size, 0, Math.PI * 2);
@@ -305,6 +366,8 @@
     for (let i = 0; i < electrons.length; i++) {
       const idx = Math.floor(electrons[i].progress * (pathLen - 1));
       const pt  = densePath[Math.min(idx, pathLen - 1)];
+      if (isInsideBulb(pt.x, pt.y)) continue;
+      if (isInsideBattery(pt)) continue;
       ctx.fillStyle = `rgb(${electrons[i].r},${electrons[i].g},${electrons[i].b})`;
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, electrons[i].size, 0, Math.PI * 2);
@@ -623,27 +686,34 @@
     ctx.save();
 
     if (sim.circuitType === 'seri') {
+      ctx.save();
+      ctx.lineCap  = 'round';
+      ctx.lineJoin = 'round';
+
+      const drawSeriPath = function() {
+        if (!geo.visualSegments) return;
+        for (let i = 0; i < geo.visualSegments.length; i++) {
+          const seg = geo.visualSegments[i];
+          ctx.beginPath();
+          ctx.moveTo(seg[0].x, seg[0].y);
+          for (let j = 1; j < seg.length; j++) {
+            ctx.lineTo(seg[j].x, seg[j].y);
+          }
+          ctx.stroke();
+        }
+      };
+
       ctx.strokeStyle = '#2e4a6a';
       ctx.lineWidth   = 6;
-      ctx.lineCap     = 'round';
-      ctx.lineJoin    = 'round';
-      const { wirePath } = geo;
-      ctx.beginPath();
-      ctx.moveTo(wirePath[0].x, wirePath[0].y);
-      for (let i = 1; i < wirePath.length; i++) {
-        ctx.lineTo(wirePath[i].x, wirePath[i].y);
-      }
-      ctx.stroke();
+      drawSeriPath();
+
       if (sim.I > 0) {
         ctx.strokeStyle = 'rgba(79, 195, 247, 0.35)';
         ctx.lineWidth   = 10;
-        ctx.beginPath();
-        ctx.moveTo(wirePath[0].x, wirePath[0].y);
-        for (let i = 1; i < wirePath.length; i++) {
-          ctx.lineTo(wirePath[i].x, wirePath[i].y);
-        }
-        ctx.stroke();
+        drawSeriPath();
       }
+
+      ctx.restore();
     } else {
       ctx.lineCap  = 'round';
       ctx.lineJoin = 'round';
@@ -970,7 +1040,6 @@
     drawBackground(geo);
     drawWires(geo);
     drawBatteries(geo);
-    drawBulbs(geo);
     drawPhysicsLabels(geo);
 
     let speedMultiplier;
@@ -986,8 +1055,10 @@
 
     updateElectrons(geo.densePath, geo.parallelLoops, speedMultiplier);
     if (sim.I > 0) {
-      drawElectrons(geo.densePath, geo.parallelLoops);
+      drawElectrons(geo.densePath, geo.parallelLoops, geo);
     }
+
+    drawBulbs(geo);
 
     if (sim.blastActive) {
       const elapsed = Date.now() - sim.blastTime;
