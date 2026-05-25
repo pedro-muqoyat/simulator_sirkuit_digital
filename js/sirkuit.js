@@ -574,9 +574,17 @@
     }
   }
 
-  function drawBackground() {
-    ctx.fillStyle = '#0d1b2a';
+  function drawBackground(geo) {
+    const bgGradient = ctx.createRadialGradient(
+      geo.cx, geo.cy, cw * 0.1,
+      geo.cx, geo.cy, cw * 0.7
+    );
+    bgGradient.addColorStop(0, '#121727');
+    bgGradient.addColorStop(1, '#060810');
+    ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, cw, ch);
+    ctx.shadowBlur  = 0;
+    ctx.shadowColor = 'transparent';
   }
 
   function drawWires(geo) {
@@ -656,28 +664,38 @@
   function drawSwitch(geo) {
     const switchX    = geo.left;
     const switchMidY = (geo.top + geo.bottom) / 2;
-    const halfLen    = Math.min(cw, ch) * 0.06;
+    const termRadius = 4;
+    const armLen     = Math.min(cw, ch) * 0.055;
 
-    const pointA = { x: switchX, y: switchMidY - halfLen };
-    const pointB = { x: switchX, y: switchMidY + halfLen };
+    const termA = { x: switchX, y: switchMidY - armLen };
+    const termB = { x: switchX, y: switchMidY + armLen };
+
+    ctx.save();
+    ctx.fillStyle = '#b0bec5';
+    ctx.beginPath();
+    ctx.arc(termA.x, termA.y, termRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(termB.x, termB.y, termRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.lineWidth = 4;
+    ctx.lineCap   = 'round';
 
     if (sim.isSakelarTertutup) {
-      ctx.strokeStyle = '#00AA00';
-      ctx.lineWidth   = 6;
+      ctx.strokeStyle = '#69f0ae';
       ctx.beginPath();
-      ctx.moveTo(pointA.x, pointA.y);
-      ctx.lineTo(pointB.x, pointB.y);
+      ctx.moveTo(termA.x, termA.y);
+      ctx.lineTo(termB.x, termB.y);
       ctx.stroke();
     } else {
-      ctx.strokeStyle = '#CC0000';
-      ctx.lineWidth   = 6;
+      const angle   = -Math.PI / 6;
+      const tipX    = termA.x + Math.sin(angle) * armLen * 1.4;
+      const tipY    = termA.y - Math.cos(angle) * armLen * 1.4;
+      ctx.strokeStyle = '#ff758c';
       ctx.beginPath();
-      ctx.moveTo(pointA.x, pointA.y);
-      ctx.lineTo(pointA.x, pointA.y + halfLen - 4);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(pointB.x, pointB.y - halfLen + 4);
-      ctx.lineTo(pointB.x, pointB.y);
+      ctx.moveTo(termA.x, termA.y);
+      ctx.lineTo(tipX, tipY);
       ctx.stroke();
     }
 
@@ -685,32 +703,34 @@
     ctx.font         = '11px sans-serif';
     ctx.textAlign    = 'right';
     ctx.textBaseline = 'middle';
-    const labelText  = sim.isSakelarTertutup ? 'ON' : 'OFF';
-    ctx.fillText(labelText, switchX - 8, switchMidY);
+    ctx.fillText(sim.isSakelarTertutup ? 'ON' : 'OFF', switchX - 8, switchMidY);
+
+    ctx.shadowBlur  = 0;
+    ctx.shadowColor = 'transparent';
+    ctx.restore();
   }
 
   function drawBatteries(geo) {
     const { batteryY, cx } = geo;
     const count  = sim.batteryCount;
-    const bw     = 36;
-    const bh     = 18;
+    const bw     = 45;
+    const bh     = 24;
     const gap    = 10;
 
     const drawOneBattery = function(bx, by) {
-      ctx.fillStyle   = '#69f0ae';
-      ctx.strokeStyle = '#0d1b2a';
-      ctx.lineWidth   = 2;
+      ctx.shadowBlur  = 0;
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle   = '#26a69a';
+      ctx.strokeStyle = 'transparent';
+      ctx.lineWidth   = 0;
       ctx.beginPath();
-      ctx.roundRect(bx, by, bw, bh, 4);
+      ctx.roundRect(bx, by, bw, bh, 6);
       ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#0d1b2a';
-      ctx.fillRect(bx + bw - 4, by + bh * 0.25, 4, bh * 0.5);
-      ctx.fillStyle    = '#0d1b2a';
-      ctx.font         = 'bold 11px sans-serif';
+      ctx.fillStyle    = '#ffffff';
+      ctx.font         = 'bold 13px sans-serif';
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('+', bx + bw / 2, by + bh / 2);
+      ctx.fillText('+', bx + bw - 9, by + bh / 2);
     };
 
     const totalW = count * bw + (count - 1) * gap;
@@ -723,6 +743,8 @@
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillText(`Baterai x${count}  (${sim.V_total.toFixed(1)} V)`, cx, batteryY - bh / 2 - 6);
+    ctx.shadowBlur  = 0;
+    ctx.shadowColor = 'transparent';
   }
 
   function drawDetachedBulb(x, y, radius) {
@@ -749,16 +771,31 @@
     const count         = sim.bulbCount;
     const radius        = 16;
     const DETACH_OFFSET = 20;
+    const baseW         = 10;
+    const baseH         = 6;
 
     for (let i = 0; i < count; i++) {
       const pos = bulbPositions[i];
       if (!pos) continue;
-      const bx          = pos.x;
-      const by          = pos.y;
-      const detachedY   = Math.min(by + DETACH_OFFSET, geo.bottom - 45);
+      const bx        = pos.x;
+      const by        = pos.y;
+      const detachedY = Math.min(by + DETACH_OFFSET, geo.bottom - 45);
 
       if (bulbs[i] && bulbs[i].isDetached) {
-        drawDetachedBulb(bx, detachedY, radius);
+        ctx.save();
+        ctx.shadowBlur  = 0;
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle   = 'rgba(207,216,220,0.2)';
+        ctx.beginPath();
+        ctx.arc(bx, detachedY, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#90a4ae';
+        ctx.beginPath();
+        ctx.roundRect(bx - baseW / 2, detachedY + radius - 2, baseW, baseH, 2);
+        ctx.fill();
+        ctx.shadowBlur  = 0;
+        ctx.shadowColor = 'transparent';
+        ctx.restore();
       } else if ((bulbs[i] && bulbs[i].isBurnt) || sim.bulbState === 'overload') {
         try {
           drawBrokenBulb(bx, by, radius);
@@ -767,7 +804,31 @@
           ctx.fillRect(bx - radius, by - radius, radius * 2, radius * 2);
         }
       } else {
-        drawNormalBulb(bx, by, radius, sim.dimAlpha);
+        ctx.save();
+        const glowSize = sim.I * 5;
+        if (sim.I > 0 && sim.dimAlpha > 0.3) {
+          ctx.shadowColor = '#fff59d';
+          ctx.shadowBlur  = glowSize;
+        } else {
+          ctx.shadowBlur  = 0;
+          ctx.shadowColor = 'transparent';
+        }
+        ctx.fillStyle   = sim.I > 0 ? '#fff59d' : 'rgba(207,216,220,0.2)';
+        ctx.strokeStyle = sim.I > 0 ? '#f9a825' : '#546e7a';
+        ctx.lineWidth   = 2;
+        ctx.globalAlpha = sim.dimAlpha;
+        ctx.beginPath();
+        ctx.arc(bx, by, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur  = 0;
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle   = '#90a4ae';
+        ctx.beginPath();
+        ctx.roundRect(bx - baseW / 2, by + radius - 2, baseW, baseH, 2);
+        ctx.fill();
+        ctx.restore();
       }
     }
 
@@ -780,6 +841,8 @@
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText(`Lampu x${count}  (${sim.bulbWatt}W nominal)`, cx, labelY);
+    ctx.shadowBlur  = 0;
+    ctx.shadowColor = 'transparent';
   }
 
   function drawNormalBulb(x, y, radius, alpha) {
@@ -871,7 +934,7 @@
   function render(timestamp) {
     const geo = getGeometry();
 
-    drawBackground();
+    drawBackground(geo);
     drawWires(geo);
     drawBatteries(geo);
     drawBulbs(geo);

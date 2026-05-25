@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -5,19 +7,19 @@
 }
 
 :root {
-  --clr-bg:          #0d1b2a;
-  --clr-surface:     #1b2d45;
-  --clr-surface-2:   #243650;
+  --clr-bg:          #1a1c2e;
+  --clr-surface:     #242742;
+  --clr-surface-2:   #2c3058;
   --clr-accent:      #f7c948;
   --clr-accent-2:    #4fc3f7;
   --clr-success:     #69f0ae;
   --clr-danger:      #ff5252;
-  --clr-text:        #e8f4fd;
+  --clr-text:        #e3e4fc;
   --clr-text-muted:  #90b4ce;
-  --clr-border:      #2e4a6a;
+  --clr-border:      #2f335c;
   --color-red-stopped: #CC0000;
 
-  --font-base: 'Segoe UI', 'Arial Rounded MT Bold', Arial, sans-serif;
+  --font-base: 'Fredoka', 'Arial Rounded MT Bold', Arial, sans-serif;
   --fs-xs:   0.875rem;
   --fs-sm:   1rem;
   --fs-md:   1.125rem;
@@ -32,9 +34,9 @@
 
   --radius-sm: 8px;
   --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-lg: 24px;
 
-  --shadow-card: 0 4px 24px rgba(0,0,0,0.45);
+  --shadow-card: none;
   --shadow-glow: 0 0 18px rgba(247,201,72,0.35);
 }
 
@@ -46,8 +48,8 @@ html {
 
 body {
   font-family: var(--font-base);
-  background-color: var(--clr-bg);
-  color: var(--clr-text);
+  background-color: #1a1c2e;
+  color: #e3e4fc;
   height: 100%;
   min-height: 100vh;
   display: grid;
@@ -173,11 +175,11 @@ body {
 }
 
 .info-panel {
-  background: var(--clr-surface);
-  border: 2px solid var(--clr-border);
-  border-radius: var(--radius-lg);
+  background: #242742;
+  border: 2px solid #2f335c;
+  border-radius: 24px;
   padding: var(--sp-md);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 .info-panel__title {
@@ -261,11 +263,11 @@ body {
 }
 
 .control-panel {
-  background: var(--clr-surface);
-  border: 2px solid var(--clr-border);
-  border-radius: var(--radius-lg);
+  background: #242742;
+  border: 2px solid #2f335c;
+  border-radius: 24px;
   padding: var(--sp-md);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: var(--sp-md);
@@ -325,6 +327,7 @@ body {
   border: 1px solid var(--clr-border);
   padding: 17px 0;
   background-clip: content-box;
+  accent-color: #00f2c4;
 }
 
 .slider-input::-webkit-slider-thumb {
@@ -466,21 +469,21 @@ body {
   width: 100%;
   min-height: 48px;
   padding: var(--sp-sm) var(--sp-md);
-  background: linear-gradient(135deg, #1a3a5c, #0d2137);
-  color: var(--clr-accent-2);
+  background: #4facfe;
+  color: #ffffff;
   font-size: var(--fs-sm);
   font-weight: 700;
   font-family: var(--font-base);
-  border: 2px solid var(--clr-accent-2);
-  border-radius: var(--radius-md);
+  border: none;
+  border-radius: 50px;
   cursor: pointer;
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
   letter-spacing: 0.03em;
 }
 
 .btn-reset:hover {
-  background: linear-gradient(135deg, #1e4a72, #122840);
-  box-shadow: 0 0 16px rgba(79,195,247,0.4);
+  background: #3a9de8;
+  box-shadow: 0 0 16px rgba(79,172,254,0.5);
 }
 
 .btn-reset:active {
@@ -543,7 +546,7 @@ body {
   font-size: var(--fs-sm);
   font-weight: 700;
   font-family: var(--font-base);
-  border-radius: var(--radius-md);
+  border-radius: 50px;
   cursor: pointer;
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
   letter-spacing: 0.03em;
@@ -551,25 +554,25 @@ body {
 }
 
 .btn-sakelar--on {
-  background: linear-gradient(135deg, #0d2a1a, #1a4a2e);
-  color: #69f0ae;
-  border-color: #00AA00;
+  background: #00c853;
+  color: #ffffff;
+  border-color: #00c853;
 }
 
 .btn-sakelar--on:hover {
-  background: linear-gradient(135deg, #122e1e, #1e5234);
-  box-shadow: 0 0 16px rgba(0, 170, 0, 0.4);
+  background: #00b248;
+  box-shadow: 0 0 16px rgba(0, 200, 83, 0.5);
 }
 
 .btn-sakelar--off {
-  background: linear-gradient(135deg, #2a0d0d, #4a1a1a);
-  color: #ff8a80;
-  border-color: #CC0000;
+  background: #ff758c;
+  color: #ffffff;
+  border-color: #ff758c;
 }
 
 .btn-sakelar--off:hover {
-  background: linear-gradient(135deg, #2e1212, #521e1e);
-  box-shadow: 0 0 16px rgba(204, 0, 0, 0.4);
+  background: #e85f78;
+  box-shadow: 0 0 16px rgba(255, 117, 140, 0.5);
 }
 
 .btn-sakelar:active {
