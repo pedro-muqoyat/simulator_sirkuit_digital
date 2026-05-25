@@ -575,14 +575,30 @@
   }
 
   function drawBackground(geo) {
-    const bgGradient = ctx.createRadialGradient(
-      geo.cx, geo.cy, cw * 0.1,
-      geo.cx, geo.cy, cw * 0.7
-    );
-    bgGradient.addColorStop(0, '#121727');
-    bgGradient.addColorStop(1, '#060810');
+    const bgGradient = ctx.createRadialGradient(geo.cx, geo.cy, 50, geo.cx, geo.cy, cw);
+    bgGradient.addColorStop(0, '#111625');
+    bgGradient.addColorStop(1, '#070a10');
     ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, cw, ch);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(79, 195, 247, 0.05)';
+    ctx.lineWidth   = 1;
+    const gridSize  = 50;
+    for (let x = 0; x <= cw; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, ch);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= ch; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(cw, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+
     ctx.shadowBlur  = 0;
     ctx.shadowColor = 'transparent';
   }
