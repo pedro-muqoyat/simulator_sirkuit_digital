@@ -923,7 +923,7 @@
     ctx.textBaseline = 'middle';
 
     if (sim.circuitType === 'paralel') {
-      ctx.fillText(label, cx, bottom + 18);
+      ctx.fillText(label, cx, bottom + 32);
     } else {
       ctx.fillText(label, cx, top - 30);
     }
