@@ -663,7 +663,14 @@
 
   function drawSwitch(geo) {
     const switchX    = geo.left;
-    const switchMidY = (geo.top + geo.bottom) / 2;
+    let   switchMidY = (geo.top + geo.bottom) / 2;
+
+    if (sim.circuitType === 'paralel') {
+      const SLOT_HEIGHT  = 60;
+      const slot4Y       = 45 + 3 * SLOT_HEIGHT;
+      switchMidY = (slot4Y + geo.bottom) / 2;
+    }
+
     const termRadius = 4;
     const armLen     = Math.min(cw, ch) * 0.055;
 
@@ -689,9 +696,9 @@
       ctx.lineTo(termB.x, termB.y);
       ctx.stroke();
     } else {
-      const angle   = -Math.PI / 6;
-      const tipX    = termA.x + Math.sin(angle) * armLen * 1.4;
-      const tipY    = termA.y - Math.cos(angle) * armLen * 1.4;
+      const angle = -Math.PI / 6;
+      const tipX  = termA.x + Math.sin(angle) * armLen * 1.4;
+      const tipY  = termA.y - Math.cos(angle) * armLen * 1.4;
       ctx.strokeStyle = '#ff758c';
       ctx.beginPath();
       ctx.moveTo(termA.x, termA.y);
