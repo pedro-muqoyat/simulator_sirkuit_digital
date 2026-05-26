@@ -49,6 +49,11 @@ html {
 body {
   font-family: var(--font-base);
   background-color: #1a1c2e;
+  background-image: linear-gradient(rgba(26, 28, 46, 0.88), rgba(26, 28, 46, 0.88)), url('../LatarbelakangSirkuitHD.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: #e3e4fc;
   height: 100%;
   min-height: 100vh;

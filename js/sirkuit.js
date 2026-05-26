@@ -651,7 +651,7 @@
   }
 
   function drawBackground(geo) {
-    const bgGradient = ctx.createRadialGradient(geo.cx, geo.cy, 50, geo.cx, geo.cy, cw);
+    const bgGradient = ctx.createRadialGradient(geo.cx, geo.cy, 50, geo.cx, geo.cy, Math.max(cw, ch));
     bgGradient.addColorStop(0, '#111625');
     bgGradient.addColorStop(1, '#070a10');
     ctx.fillStyle = bgGradient;
