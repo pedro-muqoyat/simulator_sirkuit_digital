@@ -465,29 +465,34 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-xs);
   width: 100%;
   min-height: 48px;
   padding: var(--sp-sm) var(--sp-md);
-  background: #4facfe;
-  color: #ffffff;
   font-size: var(--fs-sm);
   font-weight: 700;
   font-family: var(--font-base);
+  border-radius: 12px;
   border: none;
-  border-radius: 50px;
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  position: relative;
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
   letter-spacing: 0.03em;
+  background: linear-gradient(to bottom, #4f5b66, #343d46);
+  color: #e3e4fc;
+  box-shadow: 0 5px 0 #20262b,
+              0 8px 10px rgba(0, 0, 0, 0.4),
+              inset 0 2px 1px rgba(255, 255, 255, 0.2);
 }
 
 .btn-reset:hover {
-  background: #3a9de8;
-  box-shadow: 0 0 16px rgba(79,172,254,0.5);
+  background: linear-gradient(to bottom, #65737e, #4f5b66);
 }
 
 .btn-reset:active {
-  transform: scale(0.97);
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #20262b,
+              0 2px 4px rgba(0, 0, 0, 0.4),
+              inset 0 2px 3px rgba(0, 0, 0, 0.4);
 }
 
 .app-footer {
@@ -546,37 +551,54 @@ body {
   font-size: var(--fs-sm);
   font-weight: 700;
   font-family: var(--font-base);
-  border-radius: 50px;
+  border-radius: 12px;
+  border: none;
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  position: relative;
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
   letter-spacing: 0.03em;
-  border: 2px solid transparent;
 }
 
 .btn-sakelar--on {
-  background: #00c853;
+  background: linear-gradient(to bottom, #00e676, #00a23c);
   color: #ffffff;
-  border-color: #00c853;
+  box-shadow: 0 5px 0 #007026,
+              0 8px 10px rgba(0, 0, 0, 0.4),
+              inset 0 2px 1px rgba(255, 255, 255, 0.5);
 }
 
 .btn-sakelar--on:hover {
-  background: #00b248;
-  box-shadow: 0 0 16px rgba(0, 200, 83, 0.5);
+  background: linear-gradient(to bottom, #00ff84, #00b342);
+}
+
+.btn-sakelar--on:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #007026,
+              0 2px 4px rgba(0, 0, 0, 0.4),
+              inset 0 2px 3px rgba(0, 0, 0, 0.3);
 }
 
 .btn-sakelar--off {
-  background: #ff758c;
+  background: linear-gradient(to bottom, #ff5252, #d32f2f);
   color: #ffffff;
-  border-color: #ff758c;
+  box-shadow: 0 5px 0 #9a1f1f,
+              0 8px 10px rgba(0, 0, 0, 0.4),
+              inset 0 2px 1px rgba(255, 255, 255, 0.5);
 }
 
 .btn-sakelar--off:hover {
-  background: #e85f78;
-  box-shadow: 0 0 16px rgba(255, 117, 140, 0.5);
+  background: linear-gradient(to bottom, #ff6e6e, #e53935);
+}
+
+.btn-sakelar--off:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #9a1f1f,
+              0 2px 4px rgba(0, 0, 0, 0.4),
+              inset 0 2px 3px rgba(0, 0, 0, 0.3);
 }
 
 .btn-sakelar:active {
-  transform: scale(0.97);
+  transform: translateY(4px);
 }
 
 .btn-sakelar:focus-visible {
