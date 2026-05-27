@@ -50,7 +50,7 @@ Simulator ini dibangun menggunakan standar teknologi web modern untuk menjamin t
 
 ## Panduan Penggunaan
 
-Aplikasi dapat dijalankan langsung melalui peramban web modern dengan langkah operasional sebagai berikut:
+Aplikasi ini dapat dijalankan langsung melalui peramban web modern dengan langkah operasional sebagai berikut:
 
 1. Buka file `index.html` pada peramban web pilihan Anda.
 2. Gunakan panel kontrol di sisi antarmuka untuk menambah atau mengurangi komponen sirkuit sesuai skenario eksperimen.
