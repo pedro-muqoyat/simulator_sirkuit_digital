@@ -1,16 +1,16 @@
 # Simulator Sirkuit Digital: Petualangan Arus Elektron
 
-Simulator Sirkuit Digital adalah aplikasi berbasis web yang dikembangkan sebagai alat bantu visual interaktif untuk mempelajari konsep dasar kelistrikan. Dirancang khusus sebagai media pembelajaran bermakna, aplikasi ini membantu siswa memahami fenomena abstrak fisika melalui simulasi yang aman, intuitif, dan akurat secara ilmiah.
+Simulator Sirkuit Digital adalah aplikasi berbasis web yang dikembangkan sebagai alat bantu visual interaktif untuk mempelajari konsep dasar kelistrikan. Dirancang khusus sebagai media pembelajaran bermakna khususnya dalam mata pelajaran IPA, aplikasi ini membantu siswa memahami fenomena abstrak fisika melalui simulasi yang aman, intuitif, dan akurat secara ilmiah.
 
 ---
 
 ## Target Pembelajaran dan Filosofi
 
-Aplikasi ini ditujukan bagi siswa Sekolah Dasar tingkat fase C (Kelas 4 hingga 6 atau rentang usia 9 hingga 12 tahun). 
+Aplikasi ini ditujukan bagi siswa Sekolah Dasar tingkat fase C dan juga Sekolah Menengah Pertama tingkat fase D (Kelas 4 hingga 9 atau rentang usia 9 hingga 16 tahun). 
 
 Mengusung model *Sandbox Environment*, simulator ini memberikan kebebasan penuh bagi siswa untuk memanipulasi berbagai variabel kelistrikan secara ekstrem. Pendekatan eksploratif ini dirancang untuk memicu pemahaman hubungan sebab-akibat secara mandiri, seperti melihat lampu yang meredup, menyala normal, hingga mengalami putus atau malfungsi akibat beban berlebih.
 
-Tujuan utama dari pengembangan simulator ini adalah mengeliminasi miskonsepsi umum di tingkat sekolah dasar bahwa penambahan kuantitas sumber daya baterai akan selalu meningkatkan intensitas cahaya lampu secara linear. Melalui pemanfaatan teknologi *sandbox* yang edukatif, siswa dapat menyimpulkan sendiri batasan fisik sirkuit secara objektif.
+Tujuan utama dari pengembangan simulator ini adalah mengeliminasi miskonsepsi umum di tingkat sekolah dasar bahwa penambahan kuantitas sumber daya baterai akan selalu meningkatkan intensitas cahaya lampu secara linear dan juga memberikan gambaran perhitungan yang rinci akan kondisi yang terjadi pada sirkuit rangkaian. Melalui pemanfaatan teknologi *sandbox* yang edukatif, siswa dapat menyimpulkan sendiri batasan fisik sirkuit secara objektif.
 
 ---
 
@@ -18,6 +18,9 @@ Tujuan utama dari pengembangan simulator ini adalah mengeliminasi miskonsepsi um
 
 * **Pengaturan Variabel Dinamis**
   Pengguna dapat memodifikasi jumlah baterai, jumlah lampu, dan daya hambat lampu dalam satuan Watt secara fleksibel untuk menguji perilaku sirkuit.
+
+* **Manipulasi Komponen Interaktif**
+  Mendukung interaksi langsung dengan komponen di dalam kanvas, di mana pengguna dapat mencabut lampu dari rangkaian hanya dengan melakukan klik *mouse* (baik di PC maupun laptop).
   
 * **Layout Adaptif Otomatis**
   Antarmuka UI menyesuaikan tata letak komponen secara responsif berdasarkan orientasi perangkat, memberikan kenyamanan operasional yang konsisten baik pada layar desktop maupun seluler.
@@ -47,7 +50,7 @@ Simulator ini dibangun menggunakan standar teknologi web modern untuk menjamin t
 
 ## Panduan Penggunaan
 
-Aplikasi dijalankan langsung melalui peramban web modern dengan langkah operasional sebagai berikut:
+Aplikasi dapat dijalankan langsung melalui peramban web modern dengan langkah operasional sebagai berikut:
 
 1. Buka file `index.html` pada peramban web pilihan Anda.
 2. Gunakan panel kontrol di sisi antarmuka untuk menambah atau mengurangi komponen sirkuit sesuai skenario eksperimen.
