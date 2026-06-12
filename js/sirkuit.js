@@ -1134,10 +1134,12 @@
     const scaleY = canvas.height / rect.height;
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top)  * scaleY;
+    const cssX   = e.clientX - rect.left;
+    const cssY   = e.clientY - rect.top;
 
     let overBulb = false;
-    const swDx = mouseX - cachedSwitchX;
-    const swDy = mouseY - cachedSwitchY;
+    const swDx = cssX - cachedSwitchX;
+    const swDy = cssY - cachedSwitchY;
     if (swDx * swDx + swDy * swDy <= 1225) {
       overBulb = true;
     }
@@ -1162,8 +1164,8 @@
     const scaledX = cssX * (canvas.width  / rect.width);
     const scaledY = cssY * (canvas.height / rect.height);
 
-    const swDx = scaledX - cachedSwitchX;
-    const swDy = scaledY - cachedSwitchY;
+    const swDx = cssX - cachedSwitchX;
+    const swDy = cssY - cachedSwitchY;
     if (swDx * swDx + swDy * swDy <= 1225) {
       e.preventDefault();
       onSakelarToggle();
