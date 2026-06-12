@@ -92,6 +92,7 @@ body {
   grid-template-rows: 1fr auto auto;
   gap: var(--sp-md);
   padding: var(--sp-md);
+  padding-bottom: 120px;
   width: 100%;
   max-width: 1200px;
   margin-left: auto;
@@ -264,7 +265,7 @@ body {
 #circuitCanvas {
   cursor: default;
   transition: cursor 0s;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .control-panel {
@@ -613,10 +614,11 @@ body {
 
 @media (max-width: 600px) {
   .canvas-section {
-    height: auto !important;
-    min-height: 500px !important;
+    height: auto;
+    min-height: 300px;
   }
   #circuitCanvas {
-    height: 100% !important;
+    height: 100%;
+    min-height: 300px;
   }
 }

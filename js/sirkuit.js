@@ -809,6 +809,8 @@
 
     ctx.shadowBlur  = 0;
     ctx.shadowColor = 'transparent';
+    cachedSwitchX   = switchX;
+    cachedSwitchY   = switchMidY;
     ctx.restore();
   }
 
@@ -1072,6 +1074,8 @@
   }
 
   let rafId = null;
+  let cachedSwitchX = 0;
+  let cachedSwitchY = 0;
 
   function loop(timestamp) {
     render(timestamp);
@@ -1132,26 +1136,39 @@
     const mouseY = (e.clientY - rect.top)  * scaleY;
 
     let overBulb = false;
-    for (let i = 0; i < bulbs.length; i++) {
-      if (!bulbs[i]) continue;
-      const dx = mouseX - bulbs[i].x;
-      const dy = mouseY - bulbs[i].y;
-      if (Math.sqrt(dx * dx + dy * dy) <= sim.hitBoxRadius) {
-        overBulb = true;
-        break;
+    const swDx = mouseX - cachedSwitchX;
+    const swDy = mouseY - cachedSwitchY;
+    if (swDx * swDx + swDy * swDy <= 1225) {
+      overBulb = true;
+    }
+    if (!overBulb) {
+      for (let i = 0; i < bulbs.length; i++) {
+        if (!bulbs[i]) continue;
+        const dx = mouseX - bulbs[i].x;
+        const dy = mouseY - bulbs[i].y;
+        if (Math.sqrt(dx * dx + dy * dy) <= sim.hitBoxRadius) {
+          overBulb = true;
+          break;
+        }
       }
     }
     canvas.style.cursor = overBulb ? 'pointer' : 'default';
   }
 
   function onCanvasPointerDown(e) {
-    e.preventDefault();
-
     const rect    = canvas.getBoundingClientRect();
     const cssX    = e.clientX - rect.left;
     const cssY    = e.clientY - rect.top;
     const scaledX = cssX * (canvas.width  / rect.width);
     const scaledY = cssY * (canvas.height / rect.height);
+
+    const swDx = scaledX - cachedSwitchX;
+    const swDy = scaledY - cachedSwitchY;
+    if (swDx * swDx + swDy * swDy <= 1225) {
+      e.preventDefault();
+      onSakelarToggle();
+      return;
+    }
 
     const geo   = getGeometry();
     const count = sim.bulbCount;
@@ -1164,6 +1181,7 @@
       const distB = Math.sqrt((scaledX - bulbX) * (scaledX - bulbX) + (scaledY - bulbY) * (scaledY - bulbY));
 
       if (distA <= geo.scaledHitBox || distB <= geo.scaledHitBox) {
+        e.preventDefault();
         bulbs[i].isDetached = !bulbs[i].isDetached;
         runPhysics();
         updateDisplay();
@@ -1213,6 +1231,8 @@
     sim.arusPerLampu      = 0;
     sim.hitBoxRadius      = 30;
     blasts.length         = 0;
+    cachedSwitchX         = 0;
+    cachedSwitchY         = 0;
     resetBulbs(1);
 
     btnSakelar.textContent = 'OFF';
