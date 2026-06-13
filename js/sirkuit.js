@@ -63,6 +63,46 @@
   let ch = 0;
   let dpr = 1;
 
+  const AudioEngine = {
+    ctx: null,
+    init() {
+      if (!this.ctx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        this.ctx = new AudioContextClass();
+      }
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    },
+    playClick() {
+      if (!this.ctx) return;
+      const oscillator = this.ctx.createOscillator();
+      const gainNode   = this.ctx.createGain();
+      oscillator.type  = 'sine';
+      oscillator.frequency.setValueAtTime(1200, this.ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.6, this.ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+      oscillator.connect(gainNode);
+      gainNode.connect(this.ctx.destination);
+      oscillator.start(this.ctx.currentTime);
+      oscillator.stop(this.ctx.currentTime + 0.05);
+    },
+    playOverload() {
+      if (!this.ctx) return;
+      const oscillator = this.ctx.createOscillator();
+      const gainNode   = this.ctx.createGain();
+      oscillator.type  = 'sawtooth';
+      oscillator.frequency.setValueAtTime(80, this.ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.8, this.ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
+      oscillator.connect(gainNode);
+      gainNode.connect(this.ctx.destination);
+      oscillator.start(this.ctx.currentTime);
+      oscillator.stop(this.ctx.currentTime + 0.5);
+    },
+  };
+
   function resizeCanvas() {
     dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
@@ -522,6 +562,7 @@
     if (nowOverload && !sim.wasOverload) {
       const geo = getGeometry();
       spawnBlast(geo.cx, geo.bulbY);
+      AudioEngine.playOverload();
       sim.blastTime   = Date.now();
       sim.blastActive = true;
       overloadBanner.hidden = false;
@@ -1114,6 +1155,8 @@
   }
 
   function onSakelarToggle() {
+    AudioEngine.init();
+    AudioEngine.playClick();
     sim.isSakelarTertutup = !sim.isSakelarTertutup;
     btnSakelar.textContent = sim.isSakelarTertutup ? 'ON' : 'OFF';
     btnSakelar.setAttribute('aria-pressed', sim.isSakelarTertutup ? 'true' : 'false');
@@ -1158,6 +1201,7 @@
   }
 
   function onCanvasPointerDown(e) {
+    AudioEngine.init();
     const rect    = canvas.getBoundingClientRect();
     const cssX    = e.clientX - rect.left;
     const cssY    = e.clientY - rect.top;
