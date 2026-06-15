@@ -60,4 +60,4 @@ Aplikasi berjalan sepenuhnya di sisi klien (Client-Side) dan tidak membutuhkan i
 
 ## Catatan Pengembangan
 
-Siklus pengembangan aplikasi ini berfokus sepenuhnya pada kebersihan kode (clean code), optimalisasi performa rendering dan efektivitas pembelajaran. Proyek ini membuktikan bahwa simulasi sains berkinerja tinggi dapat diwujudkan melalui arsitektur fundamental web tanpa membebani ekosistem dengan dependensi yang berlebihan.
+Siklus pengembangan aplikasi ini berfokus sepenuhnya pada kebersihan kode (clean code), optimalisasi performa rendering dan efektivitas pembelajaran. Melalui proyek ini, saya ingin membuktikan bahwa media pembelajaran sains yang interaktif dan responsif dapat diciptakan hanya dengan teknologi web murni, sehingga aplikasi tetap sangat ringan dan mudah diakses oleh perangkat apa pun.
