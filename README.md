@@ -4,63 +4,60 @@ Simulator Sirkuit Digital adalah aplikasi berbasis web yang dikembangkan sebagai
 
 ---
 
-## Target Pembelajaran dan Filosofi
+## Standar Kesesuaian Edukasi
 
-Aplikasi ini ditujukan bagi siswa Sekolah Dasar tingkat fase C (Kelas 4 hingga 6 atau rentang usia 9 hingga 12 tahun). 
+Aplikasi ini dirancang secara spesifik untuk memenuhi parameter media edukasi berkualitas tinggi, mengacu pada standar pedagogi modern dan meminimalisir miskonsepsi kelistrikan pada anak:
 
-Mengusung model *Sandbox Environment*, simulator ini memberikan kebebasan penuh bagi siswa untuk memanipulasi berbagai variabel kelistrikan secara ekstrem. Pendekatan eksploratif ini dirancang untuk memicu pemahaman hubungan sebab-akibat secara mandiri, seperti melihat lampu yang meredup, menyala normal, hingga mengalami putus atau malfungsi akibat beban berlebih.
-
-Tujuan utama dari pengembangan simulator ini adalah mengeliminasi miskonsepsi umum di tingkat sekolah dasar bahwa penambahan kuantitas sumber daya baterai akan selalu meningkatkan intensitas cahaya lampu secara linear. Melalui pemanfaatan teknologi *sandbox* yang edukatif, siswa dapat menyimpulkan sendiri batasan fisik sirkuit secara objektif.
+| Kriteria Edukasi | Implementasi dalam Simulator |
+| :--- | :--- |
+| **Target Spesifik** | Ditujukan untuk siswa SD Fase C (usia 9-12 tahun) dengan antarmuka ramah anak, tombol interaktif besar, dan copywriting fungsional yang mudah dicerna. |
+| **Fokus Topik** | Membatasi ruang lingkup hanya pada eksplorasi fenomena dasar listrik serta perbedaan karakteristik tata letak rangkaian Seri dan Paralel. |
+| **Akurasi Fakta** | Kalkulasi mesin fisika beroperasi mutlak mematuhi realita dunia nyata melalui Hukum Ohm (V = I x R) dan Hukum Daya (P = V x I). |
+| **Interaksi Bermakna** | Menggunakan pendekatan Sandbox Environment. Siswa bebas bereksperimen secara ekstrem hingga menciptakan kondisi overload, memicu respons visual dan teks reflektif agar siswa menarik kesimpulan secara mandiri. |
 
 ---
 
-## Fungsi dan Fitur Utama
+## Fitur dan Inovasi Utama
 
 * **Pengaturan Variabel Dinamis**
-  Pengguna dapat memodifikasi jumlah baterai, jumlah lampu, dan daya hambat lampu dalam satuan Watt secara fleksibel untuk menguji perilaku sirkuit.
-
-* **Manipulasi Komponen Interaktif**
-  Mendukung interaksi langsung dengan komponen di dalam kanvas, di mana pengguna dapat mencabut lampu dari rangkaian hanya dengan melakukan klik *mouse* (baik di PC maupun laptop).
-  
-* **Layout Adaptif Otomatis**
-  Antarmuka UI menyesuaikan tata letak komponen secara responsif berdasarkan orientasi perangkat, memberikan kenyamanan operasional yang konsisten baik pada layar desktop maupun seluler.
-  
-* **Visualisasi Aliran Arus**
-  Pergerakan butiran elektron di sepanjang lintasan kawat direpresentasikan secara visual guna mempermudah pemahaman arah arus listrik serta membedakan fase sirkuit terbuka dan tertutup.
-  
+  Pengguna dapat memanipulasi jumlah baterai (tegangan), jumlah lampu, dan spesifikasi hambat daya (Watt) secara fleksibel untuk menguji perilaku sirkuit.
+* **Manipulasi Komponen Interaktif (Direct Touch)**
+  Komponen seperti lampu dan sakelar dapat diketuk/diklik langsung dari dalam gambar kanvas untuk memutus atau menyambung arus, didukung kalibrasi koordinat presisi untuk layar smartphone (DPR adaptif).
+* **Procedural Web Audio (SFX)**
+  Umpan balik audio berupa bunyi klik mekanis sakelar dan suara sengatan korsleting listrik disintesis secara murni menggunakan gelombang matematika bawaan peramban (tanpa berkas eksternal mp3), menjaga ukuran aplikasi tetap nol-aset.
+* **Visualisasi Aliran Arus Real-Time**
+  Pergerakan butiran elektron direpresentasikan secara visual dengan kecepatan yang sebanding lurus terhadap fluktuasi nilai Kuat Arus (Ampere) aktual.
 * **Indikator Kondisi Kontekstual**
-  Sistem memberikan umpan balik instan berupa keterangan teks edukasi terintegrasi untuk menjelaskan status aktual rangkaian, termasuk visualisasi proteksi saat terjadi kondisi *overload*.
+  Sistem memberikan peringatan instan berupa teks edukasi untuk menjelaskan status rangkaian, seperti visualisasi proteksi dan ledakan partikel saat batas toleransi daya terlampaui.
 
 ---
 
 ## Arsitektur Teknis
 
-Simulator ini dibangun menggunakan standar teknologi web modern untuk menjamin tingkat portabilitas tinggi, kecepatan muat instan, dan kemudahan akses tanpa membutuhkan instalasi perangkat lunak tambahan maupun dependensi dari pustaka pihak ketiga:
+Simulator ini dibangun menggunakan standar teknologi Enterprise Vanilla Web untuk menjamin portabilitas, kecepatan muat instan, dan eksekusi stabil di 60 FPS tanpa pustaka pihak ketiga:
 
-1. **Engine Rendering**
-   Menggunakan HTML5 Canvas API untuk mengolah visualisasi grafis performa tinggi dan merender pembaruan komponen sirkuit secara *real-time*.
-   
-2. **Logika Fisika**
-   Diimplementasikan menggunakan JavaScript murni (*Vanilla JS*) dengan algoritma kalkulasi *non-blocking* untuk memproses perhitungan nilai tegangan, hambatan total, dan kuat arus secara simultan.
-   
-3. **Tata Letak Antarmuka**
-   Memanfaatkan arsitektur CSS3 Modern melalui kombinasi *flexbox*, *grid*, dan *media queries* guna mengunci presisi komponen di berbagai resolusi layar.
+1. **Engine Rendering HTML5 Canvas**
+   Mengolah visualisasi grafis performa tinggi dengan pemisahan beban kerja yang jelas antara manipulasi DOM konvensional dan kalkulasi koordinat di dalam kanvas.
+2. **Logika Fisika JIT-Friendly**
+   Kalkulasi dieksekusi menggunakan JavaScript murni (Vanilla JS). Status aplikasi dikelola dalam Monomorphic State tunggal untuk mencegah kebocoran memori (Memory Leak) dan ramah terhadap Just-In-Time Compiler peramban.
+3. **Optimasi Algoritma Interaksi**
+   Deteksi sentuhan interaktif pada komponen dieksekusi menggunakan pendekatan jarak kuadrat (squared distance) dengan kompleksitas waktu O(1), memastikan respons layar sentuh tetap seketika tanpa membebani CPU perangkat seluler berspesifikasi rendah.
+4. **Tata Letak CSS3 Modern**
+   Memanfaatkan flexbox dan grid untuk mengunci presisi rasio komponen di berbagai orientasi layar. Dilengkapi dengan lapisan Mobile Safe Zone khusus untuk mematikan efek scroll-trapping saat diakses melalui smartphone.
 
 ---
 
 ## Panduan Penggunaan
 
-Aplikasi dijalankan langsung melalui peramban web modern dengan langkah operasional sebagai berikut:
+Aplikasi berjalan sepenuhnya di sisi klien (Client-Side) dan tidak membutuhkan instalasi server, build tools, maupun koneksi internet aktif setelah dimuat:
 
-1. Buka file `index.html` pada peramban web pilihan Anda.
-2. Gunakan panel kontrol di sisi antarmuka untuk menambah atau mengurangi komponen sirkuit sesuai skenario eksperimen.
-3. Tekan sakelar kendali utama untuk mengubah status rangkaian antara terbuka (OFF) atau tertutup (ON).
-4. Amati hasil kalkulasi hukum fisika yang diperbarui secara otomatis pada panel informasi bersamaan dengan perubahan visual pendaran lampu serta kecepatan arus elektron.
+1. Ekstrak folder proyek dan buka berkas `index.html` pada peramban web modern (Chrome, Firefox, Safari, atau Edge).
+2. Gunakan panel kontrol slider untuk menambah atau mengurangi komponen sirkuit sesuai skenario yang ingin diuji.
+3. Tekan sakelar kendali utama (melalui panel kontrol maupun dengan menyentuhnya langsung di kanvas) untuk menghidupkan aliran listrik.
+4. Amati hasil kalkulasi parameter fisika pada panel informasi bersamaan dengan perubahan visual pendaran lampu, kecepatan elektron, dan umpan balik audio.
 
 ---
 
 ## Catatan Pengembangan
 
-Siklus pengembangan aplikasi ini berfokus sepenuhnya pada kebersihan kode dan optimalisasi performa *rendering* di tingkat dasar. Pemisahan beban kerja visual antara manipulasi DOM konvensional dan kalkulasi koordinat *canvas* dilakukan dengan efisiensi tinggi. 
-
-Hal ini memastikan *engine* animasi tetap beroperasi stabil pada kecepatan optimal dengan *footprint* memori yang sangat kecil, menjadikannya sangat ramah untuk diakses oleh perangkat seluler berspesifikasi terbatas dalam lingkungan pendidikan.
+Siklus pengembangan aplikasi ini berfokus sepenuhnya pada kebersihan kode (clean code), optimalisasi performa rendering, dan efikasi pedagogi. Proyek ini membuktikan bahwa simulasi sains berkinerja tinggi dapat diwujudkan melalui arsitektur fundamental web tanpa membebani ekosistem dengan dependensi yang berlebihan.
