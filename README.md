@@ -54,7 +54,7 @@ Aplikasi berjalan sepenuhnya di sisi klien (Client-Side) dan tidak membutuhkan i
 1. Ekstrak folder proyek dan buka berkas `index.html` pada peramban web modern (Chrome, Firefox, Safari, atau Edge).
 2. Gunakan panel kontrol slider untuk menambah atau mengurangi komponen sirkuit sesuai skenario yang ingin diuji.
 3. Tekan sakelar kendali utama (melalui panel kontrol maupun dengan menyentuhnya langsung di kanvas) untuk menghidupkan aliran listrik.
-4. Amati hasil kalkulasi parameter fisika pada panel informasi bersamaan dengan perubahan visual pendaran lampu, kecepatan elektron, dan umpan balik audio.
+4. Amati hasil kalkulasi parameter fisika pada panel informasi bersamaan dengan perubahan visual pendaran lampu, kecepatan elektron dan umpan balik audio.
 
 ---
 
