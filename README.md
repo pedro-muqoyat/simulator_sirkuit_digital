@@ -41,7 +41,7 @@ Simulator ini dibangun menggunakan standar teknologi Enterprise Vanilla Web untu
 2. **Logika Fisika JIT-Friendly**
    Kalkulasi dieksekusi menggunakan JavaScript murni (Vanilla JS). Status aplikasi dikelola dalam Monomorphic State tunggal untuk mencegah kebocoran memori (Memory Leak) dan ramah terhadap Just-In-Time Compiler peramban.
 3. **Optimasi Algoritma Interaksi**
-   Deteksi sentuhan interaktif pada komponen dieksekusi menggunakan pendekatan jarak kuadrat (squared distance) dengan kompleksitas waktu O(1), memastikan respons layar sentuh tetap seketika tanpa membebani CPU perangkat seluler berspesifikasi rendah.
+   Aplikasi ini menggunakan cara perhitungan yang sangat ringan untuk mengenali sentuhan jari pengguna pada gambar komponen (seperti saat menekan lampu atau sakelar). Hasilnya, layar akan merespons seketika tanpa jeda (lag) dan simulasi tetap berjalan sangat lancar meskipun dimainkan di smartphone berspesifikasi rendah.
 4. **Tata Letak CSS3 Modern**
    Memanfaatkan flexbox dan grid untuk mengunci presisi rasio komponen di berbagai orientasi layar. Dilengkapi dengan lapisan Mobile Safe Zone khusus untuk mematikan efek scroll-trapping saat diakses melalui smartphone.
 
