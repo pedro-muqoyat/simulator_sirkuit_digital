@@ -1,6 +1,6 @@
 # Simulator Sirkuit Digital: Petualangan Arus Elektron
 
-Simulator Sirkuit Digital adalah aplikasi berbasis web yang dikembangkan sebagai alat bantu visual interaktif untuk mempelajari konsep dasar kelistrikan. Dirancang khusus sebagai media pembelajaran bermakna, aplikasi ini membantu siswa memahami fenomena abstrak fisika melalui simulasi yang aman, intuitif, dan akurat secara ilmiah.
+Simulator Sirkuit Digital adalah aplikasi berbasis web yang dikembangkan sebagai alat bantu visual interaktif untuk mempelajari konsep dasar kelistrikan. Dirancang khusus sebagai media pembelajaran bermakna, aplikasi ini membantu siswa memahami fenomena abstrak fisika melalui simulasi yang aman, intuitif dan akurat secara ilmiah.
 
 ---
 
@@ -10,7 +10,7 @@ Aplikasi ini dirancang secara spesifik untuk memenuhi parameter media edukasi be
 
 | Kriteria Edukasi | Implementasi dalam Simulator |
 | :--- | :--- |
-| **Target Spesifik** | Ditujukan untuk siswa SD Fase C (usia 9-12 tahun) dengan antarmuka ramah anak, tombol interaktif besar, dan copywriting fungsional yang mudah dicerna. |
+| **Target Spesifik** | Ditujukan untuk siswa SD Fase C (usia 9-12 tahun) dengan antarmuka ramah anak, tombol interaktif besar dan copywriting fungsional yang mudah dicerna. |
 | **Fokus Topik** | Membatasi ruang lingkup hanya pada eksplorasi fenomena dasar listrik serta perbedaan karakteristik tata letak rangkaian Seri dan Paralel. |
 | **Akurasi Fakta** | Kalkulasi mesin fisika beroperasi mutlak mematuhi realita dunia nyata melalui Hukum Ohm (V = I x R) dan Hukum Daya (P = V x I). |
 | **Interaksi Bermakna** | Menggunakan pendekatan Sandbox Environment. Siswa bebas bereksperimen secara ekstrem hingga menciptakan kondisi overload, memicu respons visual dan teks reflektif agar siswa menarik kesimpulan secara mandiri. |
@@ -20,7 +20,7 @@ Aplikasi ini dirancang secara spesifik untuk memenuhi parameter media edukasi be
 ## Fitur dan Inovasi Utama
 
 * **Pengaturan Variabel Dinamis**
-  Pengguna dapat memanipulasi jumlah baterai (tegangan), jumlah lampu, dan spesifikasi hambat daya (Watt) secara fleksibel untuk menguji perilaku sirkuit.
+  Pengguna dapat memanipulasi jumlah baterai (tegangan), jumlah lampu dan spesifikasi hambat daya (Watt) secara fleksibel untuk menguji perilaku sirkuit.
 * **Manipulasi Komponen Interaktif (Direct Touch)**
   Komponen seperti lampu dan sakelar dapat diketuk/diklik langsung dari dalam gambar kanvas untuk memutus atau menyambung arus, didukung kalibrasi koordinat presisi untuk layar smartphone (DPR adaptif).
 * **Procedural Web Audio (SFX)**
@@ -34,7 +34,7 @@ Aplikasi ini dirancang secara spesifik untuk memenuhi parameter media edukasi be
 
 ## Arsitektur Teknis
 
-Simulator ini dibangun menggunakan standar teknologi Enterprise Vanilla Web untuk menjamin portabilitas, kecepatan muat instan, dan eksekusi stabil di 60 FPS tanpa pustaka pihak ketiga:
+Simulator ini dibangun menggunakan teknologi web murni (Vanilla Web). Pendekatan tanpa pustaka eksternal ini menjamin aplikasi menjadi sangat ringan, langsung memuat secara instan dan mampu menyajikan animasi yang mulus (60 FPS) di berbagai perangkat:
 
 1. **Engine Rendering HTML5 Canvas**
    Mengolah visualisasi grafis performa tinggi dengan pemisahan beban kerja yang jelas antara manipulasi DOM konvensional dan kalkulasi koordinat di dalam kanvas.
@@ -60,4 +60,4 @@ Aplikasi berjalan sepenuhnya di sisi klien (Client-Side) dan tidak membutuhkan i
 
 ## Catatan Pengembangan
 
-Siklus pengembangan aplikasi ini berfokus sepenuhnya pada kebersihan kode (clean code), optimalisasi performa rendering, dan efikasi pedagogi. Proyek ini membuktikan bahwa simulasi sains berkinerja tinggi dapat diwujudkan melalui arsitektur fundamental web tanpa membebani ekosistem dengan dependensi yang berlebihan.
+Siklus pengembangan aplikasi ini berfokus sepenuhnya pada kebersihan kode (clean code), optimalisasi performa rendering dan efektivitas pembelajaran. Proyek ini membuktikan bahwa simulasi sains berkinerja tinggi dapat diwujudkan melalui arsitektur fundamental web tanpa membebani ekosistem dengan dependensi yang berlebihan.
